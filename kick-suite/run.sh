@@ -6,21 +6,36 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 LOG_DIR="${SCRIPT_DIR}/.runlogs"
 BUILD_SCRIPT="${SCRIPT_DIR}/build.sh"
 SONOBUS_RUN_SCRIPT="${SCRIPT_DIR}/sonobus-run.sh"
+SHOW_WINDOWS_SCRIPT="${SCRIPT_DIR}/show-faust-windows.py"
+SHOW_WINDOWS="${SHOW_WINDOWS:-0}"
 
 MAIN_BIN="${REPO_ROOT}/utilities/main"
+KICK_MIX_BIN="${REPO_ROOT}/utilities/kick-mix"
 OUTPUT_BIN="${REPO_ROOT}/utilities/output"
-KICK_BIN="${REPO_ROOT}/kicks/909"
+KICK_909_BIN="${REPO_ROOT}/kicks/909"
+KICK_808_BIN="${REPO_ROOT}/kicks/808"
 MAIN_DSP="${REPO_ROOT}/utilities/main.dsp"
+KICK_MIX_DSP="${REPO_ROOT}/utilities/kick-mix.dsp"
 OUTPUT_DSP="${REPO_ROOT}/utilities/output.dsp"
-KICK_DSP="${REPO_ROOT}/kicks/909.dsp"
+KICK_909_DSP="${REPO_ROOT}/kicks/909.dsp"
+KICK_808_DSP="${REPO_ROOT}/kicks/808.dsp"
 USE_SONOBUS="${USE_SONOBUS:-1}"
+USE_CARLA_PATCHBAY="${USE_CARLA_PATCHBAY:-0}"
 GUI_DISPLAY="${GUI_DISPLAY:-${DISPLAY:-}}"
 GUI_XAUTHORITY="${GUI_XAUTHORITY:-${XAUTHORITY:-}}"
 GUI_DISPLAY_FALLBACK="${GUI_DISPLAY_FALLBACK:-:0}"
 GUI_XAUTHORITY_FALLBACK="${GUI_XAUTHORITY_FALLBACK:-${HOME}/.Xauthority}"
 
-CARLA_ROOT="${HOME}/src/carla"
-CARLA_PATCHBAY="${CARLA_ROOT}/source/frontend/carla-patchbay"
+PLAYBACK_FL="${PLAYBACK_FL:-alsa_output.platform-fe00b840.mailbox.stereo-fallback:playback_FL}"
+PLAYBACK_FR="${PLAYBACK_FR:-alsa_output.platform-fe00b840.mailbox.stereo-fallback:playback_FR}"
+RUSTDESK_IN_FL="${RUSTDESK_IN_FL:-RustDesk:input_FL}"
+RUSTDESK_IN_FR="${RUSTDESK_IN_FR:-RustDesk:input_FR}"
+RUSTDESK_MON_FL="${RUSTDESK_MON_FL:-RustDesk:monitor_FL}"
+RUSTDESK_MON_FR="${RUSTDESK_MON_FR:-RustDesk:monitor_FR}"
+CARLA_ROOT="${CARLA_ROOT:-${HOME}/src/carla}"
+CARLA_PATCHBAY="${CARLA_PATCHBAY:-}"
+CARLA_LD_LIBRARY_PATH="${CARLA_LD_LIBRARY_PATH:-}"
+CARLA_PYTHONPATH="${CARLA_PYTHONPATH:-}"
 
 mkdir -p "${LOG_DIR}"
 
@@ -64,29 +79,103 @@ need_binary() {
   [[ ! -x "${binary}" || "${binary}" -ot "${dsp}" ]]
 }
 
-if need_binary "${MAIN_BIN}" "${MAIN_DSP}" || need_binary "${OUTPUT_BIN}" "${OUTPUT_DSP}" || need_binary "${KICK_BIN}" "${KICK_DSP}"; then
+port_exists() {
+  local port_name="$1"
+  pw-link -o 2>/dev/null | grep -Fxq "${port_name}" || pw-link -i 2>/dev/null | grep -Fxq "${port_name}"
+}
+
+connect_if_missing() {
+  local output_port="$1"
+  local input_port="$2"
+  pw-link "${output_port}" "${input_port}" >/dev/null 2>&1 || true
+}
+
+disconnect_if_linked() {
+  local output_port="$1"
+  local input_port="$2"
+  pw-link -d "${output_port}" "${input_port}" >/dev/null 2>&1 || true
+}
+
+launch_client() {
+  local binary="$1"
+  local log_file="$2"
+  setsid -f env "${launch_env[@]}" pw-jack "${binary}" >"${log_file}" 2>&1 < /dev/null
+}
+
+configure_carla() {
+  local candidate
+
+  if [[ -n "${CARLA_PATCHBAY}" ]]; then
+    return
+  fi
+
+  for candidate in \
+    "${CARLA_ROOT}/source/frontend/carla-patchbay" \
+    "${CARLA_ROOT}/data/carla-patchbay" \
+    "$(command -v carla-patchbay 2>/dev/null || true)"
+  do
+    [[ -n "${candidate}" && -x "${candidate}" ]] || continue
+    CARLA_PATCHBAY="${candidate}"
+    break
+  done
+
+  case "${CARLA_PATCHBAY}" in
+    "${CARLA_ROOT}/source/frontend/"*)
+      CARLA_LD_LIBRARY_PATH="${CARLA_LD_LIBRARY_PATH:-${CARLA_ROOT}/bin}"
+      CARLA_PYTHONPATH="${CARLA_PYTHONPATH:-${CARLA_ROOT}/source/frontend:${CARLA_ROOT}/bin/resources}"
+      ;;
+    "${CARLA_ROOT}/data/"*)
+      CARLA_LD_LIBRARY_PATH="${CARLA_LD_LIBRARY_PATH:-${CARLA_ROOT}/bin:${CARLA_ROOT}/build/lib}"
+      CARLA_PYTHONPATH="${CARLA_PYTHONPATH:-${CARLA_ROOT}/source/frontend:${CARLA_ROOT}/build/lib:${CARLA_ROOT}/data}"
+      ;;
+    *)
+      ;;
+  esac
+}
+
+launch_carla_patchbay() {
+  if [[ "${CARLA_PATCHBAY}" == "${CARLA_ROOT}/source/frontend/"* ]]; then
+    setsid -f env "${launch_env[@]}" sh -c "cd \"${CARLA_ROOT}/source/frontend\" && LD_LIBRARY_PATH=\"${CARLA_LD_LIBRARY_PATH:+${CARLA_LD_LIBRARY_PATH}:}\${LD_LIBRARY_PATH:-}\" PYTHONPATH=\"${CARLA_PYTHONPATH:+${CARLA_PYTHONPATH}:}\${PYTHONPATH:-}\" \"${CARLA_PATCHBAY}\" >\"${LOG_DIR}/carla-patchbay.log\" 2>&1 < /dev/null"
+  else
+    setsid -f env "${launch_env[@]}" sh -c "LD_LIBRARY_PATH=\"${CARLA_LD_LIBRARY_PATH:+${CARLA_LD_LIBRARY_PATH}:}\${LD_LIBRARY_PATH:-}\" PYTHONPATH=\"${CARLA_PYTHONPATH:+${CARLA_PYTHONPATH}:}\${PYTHONPATH:-}\" \"${CARLA_PATCHBAY}\" --with-libprefix=\"${CARLA_ROOT}\" >\"${LOG_DIR}/carla-patchbay.log\" 2>&1 < /dev/null"
+  fi
+}
+
+if need_binary "${MAIN_BIN}" "${MAIN_DSP}" || need_binary "${KICK_MIX_BIN}" "${KICK_MIX_DSP}" || need_binary "${OUTPUT_BIN}" "${OUTPUT_DSP}" || need_binary "${KICK_909_BIN}" "${KICK_909_DSP}" || need_binary "${KICK_808_BIN}" "${KICK_808_DSP}"; then
   "${BUILD_SCRIPT}"
 fi
 
 detect_gui_session
+configure_carla
 
 pkill -f "${MAIN_BIN}" || true
+pkill -f "${KICK_MIX_BIN}" || true
 pkill -f "${OUTPUT_BIN}" || true
-pkill -f "${KICK_BIN}" || true
+pkill -f "${KICK_909_BIN}" || true
+pkill -f "${KICK_808_BIN}" || true
 
 launch_env=()
 if [[ -n "${GUI_DISPLAY}" && -n "${GUI_XAUTHORITY}" ]]; then
   launch_env=("DISPLAY=${GUI_DISPLAY}" "XAUTHORITY=${GUI_XAUTHORITY}")
 fi
 
-setsid -f env "${launch_env[@]}" sh -c "pw-jack \"${MAIN_BIN}\" >\"${LOG_DIR}/main.log\" 2>&1 < /dev/null"
-setsid -f env "${launch_env[@]}" sh -c "pw-jack \"${OUTPUT_BIN}\" >\"${LOG_DIR}/output.log\" 2>&1 < /dev/null"
-setsid -f env "${launch_env[@]}" sh -c "pw-jack \"${KICK_BIN}\" >\"${LOG_DIR}/909.log\" 2>&1 < /dev/null"
+launch_client "${MAIN_BIN}" "${LOG_DIR}/main.log"
+launch_client "${KICK_MIX_BIN}" "${LOG_DIR}/kick-mix.log"
+launch_client "${OUTPUT_BIN}" "${LOG_DIR}/output.log"
+launch_client "${KICK_909_BIN}" "${LOG_DIR}/909.log"
+launch_client "${KICK_808_BIN}" "${LOG_DIR}/808.log"
 
 sleep 2
 
+if [[ "${SHOW_WINDOWS}" == "1" && -x "${SHOW_WINDOWS_SCRIPT}" ]]; then
+  setsid -f env "${launch_env[@]}" sh -c "\"${SHOW_WINDOWS_SCRIPT}\" >/dev/null 2>&1 < /dev/null"
+fi
+
 pw-link "main:out_0" "909:in_0"
-pw-link "909:out_0" "output:in_0"
+pw-link "main:out_1" "808:in_0"
+pw-link "909:out_0" "kick-mix:in_0"
+pw-link "808:out_0" "kick-mix:in_1"
+pw-link "kick-mix:out_0" "output:in_0"
 
 if [[ "${USE_SONOBUS}" == "1" ]]; then
   if [[ ! -x "${SONOBUS_RUN_SCRIPT}" ]]; then
@@ -96,13 +185,20 @@ if [[ "${USE_SONOBUS}" == "1" ]]; then
 
   "${SONOBUS_RUN_SCRIPT}"
 else
-  pw-link "output:out_0" "alsa_output.platform-fe00b840.mailbox.stereo-fallback:playback_FL"
-  pw-link "output:out_1" "alsa_output.platform-fe00b840.mailbox.stereo-fallback:playback_FR"
+  connect_if_missing "output:out_0" "${PLAYBACK_FL}"
+  connect_if_missing "output:out_1" "${PLAYBACK_FR}"
+
+  if port_exists "${RUSTDESK_IN_FL}" && port_exists "${RUSTDESK_IN_FR}"; then
+    disconnect_if_linked "${RUSTDESK_MON_FL}" "${RUSTDESK_IN_FL}"
+    disconnect_if_linked "${RUSTDESK_MON_FR}" "${RUSTDESK_IN_FR}"
+    connect_if_missing "output:out_0" "${RUSTDESK_IN_FL}"
+    connect_if_missing "output:out_1" "${RUSTDESK_IN_FR}"
+  fi
 fi
 
-if [[ -x "${CARLA_PATCHBAY}" ]]; then
+if [[ "${USE_CARLA_PATCHBAY}" == "1" && -x "${CARLA_PATCHBAY}" ]]; then
   pkill -f "${CARLA_PATCHBAY}" || true
-  setsid -f env "${launch_env[@]}" sh -c "cd \"${CARLA_ROOT}/source/frontend\" && LD_LIBRARY_PATH=\"${CARLA_ROOT}/bin:\${LD_LIBRARY_PATH:-}\" PYTHONPATH=\"${CARLA_ROOT}/source/frontend:${CARLA_ROOT}/bin/resources\" \"${CARLA_PATCHBAY}\" --with-libprefix=\"${CARLA_ROOT}\" >\"${LOG_DIR}/carla-patchbay.log\" 2>&1 < /dev/null"
+  launch_carla_patchbay
 fi
 
 cat <<EOF
@@ -110,7 +206,10 @@ Kick suite started.
 
 Ports wired:
   main:out_0 -> 909:in_0
-  909:out_0 -> output:in_0
+  main:out_1 -> 808:in_0
+  909:out_0 -> kick-mix:in_0
+  808:out_0 -> kick-mix:in_1
+  kick-mix:out_0 -> output:in_0
 $(if [[ "${USE_SONOBUS}" == "1" ]]; then
     cat <<'EOT'
   output outputs -> SonoBus inputs
@@ -126,7 +225,9 @@ EOT
 
 Logs:
   ${LOG_DIR}/main.log
+  ${LOG_DIR}/kick-mix.log
   ${LOG_DIR}/output.log
   ${LOG_DIR}/909.log
+  ${LOG_DIR}/808.log
   ${LOG_DIR}/carla-patchbay.log
 EOF

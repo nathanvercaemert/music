@@ -1,7 +1,8 @@
 import("stdfaust.lib");
 
-run = checkbox("run");
+run = hslider("run[style:checkbox]", 1, 0, 1, 1);
 bpm = hslider("bpm [unit:BPM]", 120, 30, 200, 0.1);
+alt = hslider("alt[style:slider]", 0, 0, 1, 1);
 pulseMs = 10.0;
 level = 1.0;
 
@@ -11,5 +12,7 @@ pulseDuty = min(0.5, frequency * pulseSeconds);
 phase = +(frequency / ma.SR) ~ ma.frac;
 trigger = level * run * (phase < pulseDuty);
 meter = trigger : hbargraph("trigger", 0, 1);
+trigger909 = meter * (1.0 - alt);
+trigger808 = meter * alt;
 
-process = meter;
+process = trigger909, trigger808;
