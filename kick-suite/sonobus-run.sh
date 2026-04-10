@@ -86,16 +86,40 @@ wait_for_port() {
   return 1
 }
 
+wait_for_optional_port() {
+  local port_name="$1"
+  local tries="${2:-50}"
+  local delay="${3:-0.2}"
+  local i
+
+  for ((i = 0; i < tries; i += 1)); do
+    if pw-link -o 2>/dev/null | grep -Fxq "${port_name}" || pw-link -i 2>/dev/null | grep -Fxq "${port_name}"; then
+      return 0
+    fi
+    sleep "${delay}"
+  done
+
+  return 1
+}
+
 pkill -f "${SONOBUS_BIN}" || true
 
 setsid -f sh -c "env DISPLAY='${DISPLAY_VALUE}' XAUTHORITY='${XAUTHORITY_VALUE}' XDG_RUNTIME_DIR='${XDG_RUNTIME_DIR_VALUE}' pw-jack '${SONOBUS_BIN}' --headless -l '${SETUP_FILE}' -g '${SONOBUS_GROUP}' -n '${SONOBUS_USERNAME}' ${SONOBUS_PASSWORD:+-p '${SONOBUS_PASSWORD}'} -c '${SONOBUS_SERVER}' >'${LOG_DIR}/sonobus.log' 2>&1 < /dev/null"
 
 wait_for_port "SonoBus:in_1"
-wait_for_port "SonoBus:in_2"
 wait_for_port "SonoBus:out_1"
 wait_for_port "SonoBus:out_2"
 wait_for_port "909:out_0"
 wait_for_port "909:out_1"
+
+sonobus_in_left="SonoBus:in_1"
+sonobus_in_right="SonoBus:in_2"
+stereo_input_ready=1
+
+if ! wait_for_optional_port "${sonobus_in_right}" 15 0.2; then
+  stereo_input_ready=0
+  sonobus_in_right="${sonobus_in_left}"
+fi
 
 disconnect_if_linked "SonoBus:out_1" "${PLAYBACK_FL}"
 disconnect_if_linked "SonoBus:out_2" "${PLAYBACK_FR}"
@@ -108,10 +132,12 @@ if [[ "${SONOBUS_DISABLE_RUSTDESK}" == "1" ]]; then
 fi
 
 disconnect_if_linked "909:out_0" "SonoBus:in_1"
+disconnect_if_linked "909:out_1" "SonoBus:in_1"
+disconnect_if_linked "909:out_0" "SonoBus:in_2"
 disconnect_if_linked "909:out_1" "SonoBus:in_2"
 
-connect_if_missing "909:out_0" "SonoBus:in_1"
-connect_if_missing "909:out_1" "SonoBus:in_2"
+connect_if_missing "909:out_0" "${sonobus_in_left}"
+connect_if_missing "909:out_1" "${sonobus_in_right}"
 connect_if_missing "SonoBus:out_1" "${PLAYBACK_FL}"
 connect_if_missing "SonoBus:out_2" "${PLAYBACK_FR}"
 
@@ -127,11 +153,15 @@ Connection:
   server=${SONOBUS_SERVER}
 
 Ports wired:
-  909:out_0 -> SonoBus:in_1
-  909:out_1 -> SonoBus:in_2
+  909:out_0 -> ${sonobus_in_left}
+  909:out_1 -> ${sonobus_in_right}
   SonoBus:out_1 -> ${PLAYBACK_FL}
   SonoBus:out_2 -> ${PLAYBACK_FR}
 
 Log:
   ${LOG_DIR}/sonobus.log
 EOF
+
+if [[ "${stereo_input_ready}" != "1" ]]; then
+  echo "SonoBus exposed only in_1; using mono input fallback on ${sonobus_in_left}." >&2
+fi
