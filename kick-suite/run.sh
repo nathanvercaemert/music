@@ -5,11 +5,13 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 LOG_DIR="${SCRIPT_DIR}/.runlogs"
 BUILD_SCRIPT="${SCRIPT_DIR}/build.sh"
+SONOBUS_RUN_SCRIPT="${SCRIPT_DIR}/sonobus-run.sh"
 
 MAIN_BIN="${REPO_ROOT}/utilities/main"
 KICK_BIN="${REPO_ROOT}/kicks/909"
 MAIN_DSP="${REPO_ROOT}/utilities/main.dsp"
 KICK_DSP="${REPO_ROOT}/kicks/909.dsp"
+USE_SONOBUS="${USE_SONOBUS:-1}"
 
 CARLA_ROOT="${HOME}/src/carla"
 CARLA_PATCHBAY="${CARLA_ROOT}/source/frontend/carla-patchbay"
@@ -40,16 +42,37 @@ fi
 sleep 2
 
 pw-link "main:out_0" "909:in_0"
-pw-link "909:out_0" "alsa_output.platform-fe00b840.mailbox.stereo-fallback:playback_FL"
-pw-link "909:out_1" "alsa_output.platform-fe00b840.mailbox.stereo-fallback:playback_FR"
+
+if [[ "${USE_SONOBUS}" == "1" ]]; then
+  if [[ ! -x "${SONOBUS_RUN_SCRIPT}" ]]; then
+    echo "SonoBus helper not found or not executable: ${SONOBUS_RUN_SCRIPT}" >&2
+    exit 1
+  fi
+
+  "${SONOBUS_RUN_SCRIPT}"
+else
+  pw-link "909:out_0" "alsa_output.platform-fe00b840.mailbox.stereo-fallback:playback_FL"
+  pw-link "909:out_1" "alsa_output.platform-fe00b840.mailbox.stereo-fallback:playback_FR"
+fi
 
 cat <<EOF
 Kick suite started.
 
 Ports wired:
   main:out_0 -> 909:in_0
+$(if [[ "${USE_SONOBUS}" == "1" ]]; then
+    cat <<'EOT'
+  909:out_0 -> SonoBus:in_1
+  909:out_1 -> SonoBus:in_2
+  SonoBus:out_1 -> playback_FL
+  SonoBus:out_2 -> playback_FR
+EOT
+  else
+    cat <<'EOT'
   909:out_0 -> playback_FL
   909:out_1 -> playback_FR
+EOT
+  fi)
 
 Logs:
   ${LOG_DIR}/main.log
