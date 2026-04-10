@@ -21,8 +21,15 @@ kick-suite/sonobus.env
 # Generated faust2jack build artifacts for current patches
 utilities/main
 utilities/main.cpp
+utilities/kick-mix
+utilities/kick-mix.cpp
 utilities/output
 utilities/output.cpp
 utilities/output.dsp.cpp
+kicks/808
+kicks/808.cpp
 kicks/909
 kicks/909.cpp
+
+# Local X11 window helper
+kick-suite/show-faust-windows.py
