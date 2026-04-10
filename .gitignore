@@ -1,0 +1,24 @@
+*.wav
+*.aif
+*.aiff
+*.flac
+*.mp3
+*.ogg
+*.opus
+build/
+dist/
+.DS_Store
+
+# Local runtime logs
+.runlogs/
+kick-suite/.runlogs/
+
+# Generated Faust metadata
+*.dsp.json
+*.dsp.xml
+
+# Generated faust2jack build artifacts for current patches
+utilities/main
+utilities/main.cpp
+kicks/909
+kicks/909.cpp

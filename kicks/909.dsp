@@ -1,0 +1,34 @@
+import("stdfaust.lib");
+
+triggerInput = _ > 0.5 : ba.impulsify;
+freq = hslider("freq[unit:Hz][style:slider]", 58, 35, 90, 0.1);
+decay = hslider("decay[unit:s][style:slider]", 0.32, 0.08, 1.2, 0.01);
+pitchdecay = hslider("pitch_decay[unit:s][style:slider]", 0.035, 0.005, 0.12, 0.001);
+attack = hslider("attack[style:slider]", 0.55, 0.0, 1.0, 0.001);
+drive = hslider("drive[style:slider]", 1.15, 0.5, 3.0, 0.01);
+tone = hslider("tone[style:slider]", 0.62, 0.0, 1.0, 0.001);
+level = hslider("level[style:slider]", 0.8, 0.0, 1.0, 0.001);
+
+kick(trig) = attach(out, meter : hbargraph("envelope", 0, 1))
+with {
+  ampEnv = trig : en.ar(0.001, decay);
+  pitchEnv = trig : en.ar(0.0005, pitchdecay);
+
+  oscFreq = max(10.0, freq * (1.0 + 2.2 * pitchEnv));
+  body = os.osc(oscFreq) * ampEnv;
+
+  atkEnv = trig : en.ar(0.0002, 0.012);
+  snap = no.noise * atkEnv * attack : fi.highpass(1, 2500) : *(0.18);
+  clickOsc = os.osc(freq * 5.0) * atkEnv * attack * 0.35;
+
+  raw = body + snap + clickOsc;
+  shaped = raw : *(drive) : ma.tanh;
+  cutoff = 1200 + tone * 3800;
+
+  out = shaped
+    : fi.lowpass(1, cutoff)
+    : *(level);
+  meter = min(1.0, ampEnv + atkEnv * 0.5);
+};
+
+process(trigger) = kick(triggerInput(trigger)), kick(triggerInput(trigger));
