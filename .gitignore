@@ -12,6 +12,7 @@ dist/
 # Local runtime logs
 .runlogs/
 kick-suite/.runlogs/
+kick-suite/sonobus.env
 
 # Generated Faust metadata
 *.dsp.json
