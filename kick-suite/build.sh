@@ -5,6 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 MAIN_DSP="${REPO_ROOT}/utilities/main.dsp"
+OUTPUT_DSP="${REPO_ROOT}/utilities/output.dsp"
 KICK_DSP="${REPO_ROOT}/kicks/909.dsp"
 FAUST_JACK_COMPILER="${FAUST_JACK_COMPILER:-}"
 GUI_DISPLAY="${GUI_DISPLAY:-${DISPLAY:-}}"
@@ -58,17 +59,50 @@ fi
 
 cd "${REPO_ROOT}"
 
-faust -xml -O "${REPO_ROOT}/utilities" "${MAIN_DSP}" >/dev/null
-faust -xml -O "${REPO_ROOT}/kicks" "${KICK_DSP}" >/dev/null
+need_rebuild() {
+  local binary="$1"
+  local dsp="$2"
+  [[ ! -x "${binary}" || "${binary}" -ot "${dsp}" ]]
+}
 
-pw-jack "${FAUST_JACK_COMPILER}" "${MAIN_DSP}"
-pw-jack "${FAUST_JACK_COMPILER}" "${KICK_DSP}"
+need_xml_refresh() {
+  local xml="$1"
+  local dsp="$2"
+  [[ ! -f "${xml}" || "${xml}" -ot "${dsp}" ]]
+}
+
+refresh_xml() {
+  local out_dir="$1"
+  local dsp="$2"
+  local xml_path="${dsp}.xml"
+
+  if need_xml_refresh "${xml_path}" "${dsp}"; then
+    faust -xml -O "${out_dir}" "${dsp}" >/dev/null
+  fi
+}
+
+build_module() {
+  local binary="$1"
+  local dsp="$2"
+  local out_dir="$3"
+
+  refresh_xml "${out_dir}" "${dsp}"
+
+  if need_rebuild "${binary}" "${dsp}"; then
+    "${FAUST_JACK_COMPILER}" "${dsp}"
+  fi
+}
+
+build_module "${REPO_ROOT}/utilities/main" "${MAIN_DSP}" "${REPO_ROOT}/utilities"
+build_module "${REPO_ROOT}/utilities/output" "${OUTPUT_DSP}" "${REPO_ROOT}/utilities"
+build_module "${REPO_ROOT}/kicks/909" "${KICK_DSP}" "${REPO_ROOT}/kicks"
 
 cat <<EOF
 Build complete.
 
 Generated:
   ${REPO_ROOT}/utilities/main
+  ${REPO_ROOT}/utilities/output
   ${REPO_ROOT}/kicks/909
 
 Compiler:

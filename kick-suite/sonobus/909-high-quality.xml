@@ -57,7 +57,7 @@
         <ChannelGroup gain="1.0" chanstart="0" numchan="2" muted="0" span1="-1.0" span2="1.0"
                       monreverbsend="0.0" inreverbsend="0.0" monitorlev="0.0" mondeststart="0"
                       mondestchans="2" pandeststart="0" pandestchans="2" sendmainmix="1"
-                      invertpolarity="0" name="909 Stereo">
+                      invertpolarity="0" name="Output Stereo">
           <StereoPanners>
             <Panner pan="0.0"/>
             <Panner pan="0.0"/>

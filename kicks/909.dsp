@@ -36,4 +36,4 @@ with {
   meter = min(1.0, ampEnv + atkEnv * 0.5);
 };
 
-process(trigger) = kick(triggerInput(trigger)), kick(triggerInput(trigger));
+process(trigger) = kick(triggerInput(trigger));

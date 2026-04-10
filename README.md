@@ -8,7 +8,8 @@ and use Carla's patchbay to visualize and wire the modules together.
 ## Modules
 
 - `utilities/main.dsp`: clock / trigger generator
-- `kicks/909.dsp`: 909-style kick with one trigger input and stereo output
+- `utilities/output.dsp`: mono-to-stereo output stage with level control
+- `kicks/909.dsp`: 909-style kick with one trigger input and mono output
 
 ## Run
 
@@ -17,13 +18,15 @@ Start each module as its own JACK client:
 ```sh
 cd /home/music/music
 pw-jack faust2jack utilities/main.dsp
+pw-jack faust2jack utilities/output.dsp
 pw-jack faust2jack kicks/909.dsp
 ```
 
 Then open Carla and use the Patchbay view to connect:
 
 - `main` output -> `909` trigger input
-- `909` outputs -> your audio output or recorder
+- `909` output -> `output` input
+- `output` outputs -> your audio output or recorder
 
 ## Notes
 
@@ -38,7 +41,7 @@ Repo-owned SonoBus config lives at [`kick-suite/sonobus/909-high-quality.xml`](/
 It is configured for:
 
 - JACK at `48 kHz`
-- stereo send from the kick
+- stereo send from the output module
 - no input compression, gate, EQ, limiter, or reverb
 - default send quality set to `PCM 16 bit`
 
@@ -65,5 +68,5 @@ Optional variables:
 - `SONOBUS_DISABLE_RUSTDESK=1` to remove RustDesk audio links and keep SonoBus as the clean program-audio path
 
 The helper script launches SonoBus headless, loads the repo setup, connects
-`909:out_0/1` to `SonoBus:in_1/2`, and routes `SonoBus:out_1/2` to hardware
+`output:out_0/1` to `SonoBus:in_1/2`, and routes `SonoBus:out_1/2` to hardware
 playback.

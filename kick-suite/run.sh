@@ -8,8 +8,10 @@ BUILD_SCRIPT="${SCRIPT_DIR}/build.sh"
 SONOBUS_RUN_SCRIPT="${SCRIPT_DIR}/sonobus-run.sh"
 
 MAIN_BIN="${REPO_ROOT}/utilities/main"
+OUTPUT_BIN="${REPO_ROOT}/utilities/output"
 KICK_BIN="${REPO_ROOT}/kicks/909"
 MAIN_DSP="${REPO_ROOT}/utilities/main.dsp"
+OUTPUT_DSP="${REPO_ROOT}/utilities/output.dsp"
 KICK_DSP="${REPO_ROOT}/kicks/909.dsp"
 USE_SONOBUS="${USE_SONOBUS:-1}"
 GUI_DISPLAY="${GUI_DISPLAY:-${DISPLAY:-}}"
@@ -52,13 +54,14 @@ need_binary() {
   [[ ! -x "${binary}" || "${binary}" -ot "${dsp}" ]]
 }
 
-if need_binary "${MAIN_BIN}" "${MAIN_DSP}" || need_binary "${KICK_BIN}" "${KICK_DSP}"; then
+if need_binary "${MAIN_BIN}" "${MAIN_DSP}" || need_binary "${OUTPUT_BIN}" "${OUTPUT_DSP}" || need_binary "${KICK_BIN}" "${KICK_DSP}"; then
   "${BUILD_SCRIPT}"
 fi
 
 detect_gui_session
 
 pkill -f "${MAIN_BIN}" || true
+pkill -f "${OUTPUT_BIN}" || true
 pkill -f "${KICK_BIN}" || true
 
 launch_env=()
@@ -67,6 +70,7 @@ if [[ -n "${GUI_DISPLAY}" && -n "${GUI_XAUTHORITY}" ]]; then
 fi
 
 setsid -f env "${launch_env[@]}" sh -c "pw-jack \"${MAIN_BIN}\" >\"${LOG_DIR}/main.log\" 2>&1 < /dev/null"
+setsid -f env "${launch_env[@]}" sh -c "pw-jack \"${OUTPUT_BIN}\" >\"${LOG_DIR}/output.log\" 2>&1 < /dev/null"
 setsid -f env "${launch_env[@]}" sh -c "pw-jack \"${KICK_BIN}\" >\"${LOG_DIR}/909.log\" 2>&1 < /dev/null"
 
 if [[ -x "${CARLA_PATCHBAY}" ]]; then
@@ -77,6 +81,7 @@ fi
 sleep 2
 
 pw-link "main:out_0" "909:in_0"
+pw-link "909:out_0" "output:in_0"
 
 if [[ "${USE_SONOBUS}" == "1" ]]; then
   if [[ ! -x "${SONOBUS_RUN_SCRIPT}" ]]; then
@@ -86,8 +91,8 @@ if [[ "${USE_SONOBUS}" == "1" ]]; then
 
   "${SONOBUS_RUN_SCRIPT}"
 else
-  pw-link "909:out_0" "alsa_output.platform-fe00b840.mailbox.stereo-fallback:playback_FL"
-  pw-link "909:out_1" "alsa_output.platform-fe00b840.mailbox.stereo-fallback:playback_FR"
+  pw-link "output:out_0" "alsa_output.platform-fe00b840.mailbox.stereo-fallback:playback_FL"
+  pw-link "output:out_1" "alsa_output.platform-fe00b840.mailbox.stereo-fallback:playback_FR"
 fi
 
 cat <<EOF
@@ -95,21 +100,23 @@ Kick suite started.
 
 Ports wired:
   main:out_0 -> 909:in_0
+  909:out_0 -> output:in_0
 $(if [[ "${USE_SONOBUS}" == "1" ]]; then
     cat <<'EOT'
-  909 outputs -> SonoBus inputs
+  output outputs -> SonoBus inputs
   SonoBus:out_1 -> playback_FL
   SonoBus:out_2 -> playback_FR
 EOT
   else
     cat <<'EOT'
-  909:out_0 -> playback_FL
-  909:out_1 -> playback_FR
+  output:out_0 -> playback_FL
+  output:out_1 -> playback_FR
 EOT
   fi)
 
 Logs:
   ${LOG_DIR}/main.log
+  ${LOG_DIR}/output.log
   ${LOG_DIR}/909.log
   ${LOG_DIR}/carla-patchbay.log
 EOF

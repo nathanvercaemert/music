@@ -109,8 +109,8 @@ setsid -f sh -c "env DISPLAY='${DISPLAY_VALUE}' XAUTHORITY='${XAUTHORITY_VALUE}'
 wait_for_port "SonoBus:in_1"
 wait_for_port "SonoBus:out_1"
 wait_for_port "SonoBus:out_2"
-wait_for_port "909:out_0"
-wait_for_port "909:out_1"
+wait_for_port "output:out_0"
+wait_for_port "output:out_1"
 
 sonobus_in_left="SonoBus:in_1"
 sonobus_in_right="SonoBus:in_2"
@@ -123,21 +123,21 @@ fi
 
 disconnect_if_linked "SonoBus:out_1" "${PLAYBACK_FL}"
 disconnect_if_linked "SonoBus:out_2" "${PLAYBACK_FR}"
-disconnect_if_linked "909:out_0" "${RUSTDESK_IN_FL}"
-disconnect_if_linked "909:out_1" "${RUSTDESK_IN_FR}"
+disconnect_if_linked "output:out_0" "${RUSTDESK_IN_FL}"
+disconnect_if_linked "output:out_1" "${RUSTDESK_IN_FR}"
 
 if [[ "${SONOBUS_DISABLE_RUSTDESK}" == "1" ]]; then
   disconnect_if_linked "${RUSTDESK_MON_FL}" "${RUSTDESK_IN_FL}"
   disconnect_if_linked "${RUSTDESK_MON_FR}" "${RUSTDESK_IN_FR}"
 fi
 
-disconnect_if_linked "909:out_0" "SonoBus:in_1"
-disconnect_if_linked "909:out_1" "SonoBus:in_1"
-disconnect_if_linked "909:out_0" "SonoBus:in_2"
-disconnect_if_linked "909:out_1" "SonoBus:in_2"
+disconnect_if_linked "output:out_0" "SonoBus:in_1"
+disconnect_if_linked "output:out_1" "SonoBus:in_1"
+disconnect_if_linked "output:out_0" "SonoBus:in_2"
+disconnect_if_linked "output:out_1" "SonoBus:in_2"
 
-connect_if_missing "909:out_0" "${sonobus_in_left}"
-connect_if_missing "909:out_1" "${sonobus_in_right}"
+connect_if_missing "output:out_0" "${sonobus_in_left}"
+connect_if_missing "output:out_1" "${sonobus_in_right}"
 connect_if_missing "SonoBus:out_1" "${PLAYBACK_FL}"
 connect_if_missing "SonoBus:out_2" "${PLAYBACK_FR}"
 
@@ -153,8 +153,8 @@ Connection:
   server=${SONOBUS_SERVER}
 
 Ports wired:
-  909:out_0 -> ${sonobus_in_left}
-  909:out_1 -> ${sonobus_in_right}
+  output:out_0 -> ${sonobus_in_left}
+  output:out_1 -> ${sonobus_in_right}
   SonoBus:out_1 -> ${PLAYBACK_FL}
   SonoBus:out_2 -> ${PLAYBACK_FR}
 
