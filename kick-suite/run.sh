@@ -16,6 +16,8 @@ KICK_DSP="${REPO_ROOT}/kicks/909.dsp"
 USE_SONOBUS="${USE_SONOBUS:-1}"
 GUI_DISPLAY="${GUI_DISPLAY:-${DISPLAY:-}}"
 GUI_XAUTHORITY="${GUI_XAUTHORITY:-${XAUTHORITY:-}}"
+GUI_DISPLAY_FALLBACK="${GUI_DISPLAY_FALLBACK:-:0}"
+GUI_XAUTHORITY_FALLBACK="${GUI_XAUTHORITY_FALLBACK:-${HOME}/.Xauthority}"
 
 CARLA_ROOT="${HOME}/src/carla"
 CARLA_PATCHBAY="${CARLA_ROOT}/source/frontend/carla-patchbay"
@@ -46,6 +48,14 @@ detect_gui_session() {
     fi
     return
   done < <(loginctl list-sessions --no-legend 2>/dev/null | awk -v user="${USER}" '$3 == user { print $1 }')
+
+  if [[ -z "${GUI_DISPLAY}" ]]; then
+    GUI_DISPLAY="${GUI_DISPLAY_FALLBACK}"
+  fi
+
+  if [[ -z "${GUI_XAUTHORITY}" && -f "${GUI_XAUTHORITY_FALLBACK}" ]]; then
+    GUI_XAUTHORITY="${GUI_XAUTHORITY_FALLBACK}"
+  fi
 }
 
 need_binary() {
@@ -73,11 +83,6 @@ setsid -f env "${launch_env[@]}" sh -c "pw-jack \"${MAIN_BIN}\" >\"${LOG_DIR}/ma
 setsid -f env "${launch_env[@]}" sh -c "pw-jack \"${OUTPUT_BIN}\" >\"${LOG_DIR}/output.log\" 2>&1 < /dev/null"
 setsid -f env "${launch_env[@]}" sh -c "pw-jack \"${KICK_BIN}\" >\"${LOG_DIR}/909.log\" 2>&1 < /dev/null"
 
-if [[ -x "${CARLA_PATCHBAY}" ]]; then
-  pkill -f "${CARLA_PATCHBAY}" || true
-  setsid -f env "${launch_env[@]}" sh -c "cd \"${CARLA_ROOT}/source/frontend\" && LD_LIBRARY_PATH=\"${CARLA_ROOT}/bin:\${LD_LIBRARY_PATH:-}\" PYTHONPATH=\"${CARLA_ROOT}/source/frontend:${CARLA_ROOT}/bin/resources\" \"${CARLA_PATCHBAY}\" --with-libprefix=\"${CARLA_ROOT}\" >\"${LOG_DIR}/carla-patchbay.log\" 2>&1 < /dev/null"
-fi
-
 sleep 2
 
 pw-link "main:out_0" "909:in_0"
@@ -93,6 +98,11 @@ if [[ "${USE_SONOBUS}" == "1" ]]; then
 else
   pw-link "output:out_0" "alsa_output.platform-fe00b840.mailbox.stereo-fallback:playback_FL"
   pw-link "output:out_1" "alsa_output.platform-fe00b840.mailbox.stereo-fallback:playback_FR"
+fi
+
+if [[ -x "${CARLA_PATCHBAY}" ]]; then
+  pkill -f "${CARLA_PATCHBAY}" || true
+  setsid -f env "${launch_env[@]}" sh -c "cd \"${CARLA_ROOT}/source/frontend\" && LD_LIBRARY_PATH=\"${CARLA_ROOT}/bin:\${LD_LIBRARY_PATH:-}\" PYTHONPATH=\"${CARLA_ROOT}/source/frontend:${CARLA_ROOT}/bin/resources\" \"${CARLA_PATCHBAY}\" --with-libprefix=\"${CARLA_ROOT}\" >\"${LOG_DIR}/carla-patchbay.log\" 2>&1 < /dev/null"
 fi
 
 cat <<EOF
