@@ -11,11 +11,13 @@ SHOW_WINDOWS="${SHOW_WINDOWS:-0}"
 
 MAIN_BIN="${REPO_ROOT}/utilities/main"
 KICK_MIX_BIN="${REPO_ROOT}/utilities/kick-mix"
+KICK_FILTERS_BIN="${REPO_ROOT}/filters/kick-filters"
 OUTPUT_BIN="${REPO_ROOT}/utilities/output"
 KICK_909_BIN="${REPO_ROOT}/kicks/909"
 KICK_808_BIN="${REPO_ROOT}/kicks/808"
 MAIN_DSP="${REPO_ROOT}/utilities/main.dsp"
 KICK_MIX_DSP="${REPO_ROOT}/utilities/kick-mix.dsp"
+KICK_FILTERS_DSP="${REPO_ROOT}/filters/kick-filters.dsp"
 OUTPUT_DSP="${REPO_ROOT}/utilities/output.dsp"
 KICK_909_DSP="${REPO_ROOT}/kicks/909.dsp"
 KICK_808_DSP="${REPO_ROOT}/kicks/808.dsp"
@@ -141,7 +143,7 @@ launch_carla_patchbay() {
   fi
 }
 
-if need_binary "${MAIN_BIN}" "${MAIN_DSP}" || need_binary "${KICK_MIX_BIN}" "${KICK_MIX_DSP}" || need_binary "${OUTPUT_BIN}" "${OUTPUT_DSP}" || need_binary "${KICK_909_BIN}" "${KICK_909_DSP}" || need_binary "${KICK_808_BIN}" "${KICK_808_DSP}"; then
+if need_binary "${MAIN_BIN}" "${MAIN_DSP}" || need_binary "${KICK_MIX_BIN}" "${KICK_MIX_DSP}" || need_binary "${KICK_FILTERS_BIN}" "${KICK_FILTERS_DSP}" || need_binary "${OUTPUT_BIN}" "${OUTPUT_DSP}" || need_binary "${KICK_909_BIN}" "${KICK_909_DSP}" || need_binary "${KICK_808_BIN}" "${KICK_808_DSP}"; then
   "${BUILD_SCRIPT}"
 fi
 
@@ -150,6 +152,7 @@ configure_carla
 
 pkill -f "${MAIN_BIN}" || true
 pkill -f "${KICK_MIX_BIN}" || true
+pkill -f "${KICK_FILTERS_BIN}" || true
 pkill -f "${OUTPUT_BIN}" || true
 pkill -f "${KICK_909_BIN}" || true
 pkill -f "${KICK_808_BIN}" || true
@@ -161,6 +164,7 @@ fi
 
 launch_client "${MAIN_BIN}" "${LOG_DIR}/main.log"
 launch_client "${KICK_MIX_BIN}" "${LOG_DIR}/kick-mix.log"
+launch_client "${KICK_FILTERS_BIN}" "${LOG_DIR}/kick-filters.log"
 launch_client "${OUTPUT_BIN}" "${LOG_DIR}/output.log"
 launch_client "${KICK_909_BIN}" "${LOG_DIR}/909.log"
 launch_client "${KICK_808_BIN}" "${LOG_DIR}/808.log"
@@ -175,7 +179,8 @@ pw-link "main:out_0" "909:in_0"
 pw-link "main:out_1" "808:in_0"
 pw-link "909:out_0" "kick-mix:in_0"
 pw-link "808:out_0" "kick-mix:in_1"
-pw-link "kick-mix:out_0" "output:in_0"
+pw-link "kick-mix:out_0" "kick-filters:in_0"
+pw-link "kick-filters:out_0" "output:in_0"
 
 if [[ "${USE_SONOBUS}" == "1" ]]; then
   if [[ ! -x "${SONOBUS_RUN_SCRIPT}" ]]; then
@@ -209,7 +214,8 @@ Ports wired:
   main:out_1 -> 808:in_0
   909:out_0 -> kick-mix:in_0
   808:out_0 -> kick-mix:in_1
-  kick-mix:out_0 -> output:in_0
+  kick-mix:out_0 -> kick-filters:in_0
+  kick-filters:out_0 -> output:in_0
 $(if [[ "${USE_SONOBUS}" == "1" ]]; then
     cat <<'EOT'
   output outputs -> SonoBus inputs
@@ -226,6 +232,7 @@ EOT
 Logs:
   ${LOG_DIR}/main.log
   ${LOG_DIR}/kick-mix.log
+  ${LOG_DIR}/kick-filters.log
   ${LOG_DIR}/output.log
   ${LOG_DIR}/909.log
   ${LOG_DIR}/808.log
