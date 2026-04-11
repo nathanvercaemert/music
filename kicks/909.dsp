@@ -6,7 +6,9 @@ decay = hslider("decay[unit:s][style:slider]", 0.32, 0.08, 1.2, 0.01);
 decayshape = hslider("decay_shape[style:slider]", 0.0, -1.0, 1.0, 0.001);
 pitchdecay = hslider("pitch_decay[unit:s][style:slider]", 0.035, 0.005, 0.12, 0.001);
 pitchdecayshape = hslider("pitch_decay_shape[style:slider]", 0.0, -1.0, 1.0, 0.001);
-attack = hslider("attack[style:slider]", 0.55, 0.0, 1.0, 0.001);
+attackdecay = hslider("attack_decay[unit:s][style:slider]", 0.012, 0.001, 0.05, 0.0005);
+snaplevel = hslider("snap_level[style:slider]", 0.55, 0.0, 1.0, 0.001);
+clicklevel = hslider("click_level[style:slider]", 0.55, 0.0, 1.0, 0.001);
 drive = hslider("drive[style:slider]", 1.15, 0.5, 3.0, 0.01);
 tone = hslider("tone[style:slider]", 0.62, 0.0, 1.0, 0.001);
 level = hslider("level[style:slider]", 0.8, 0.0, 1.0, 0.001);
@@ -22,9 +24,9 @@ with {
   oscFreq = max(10.0, freq * (1.0 + 2.2 * pitchEnv));
   body = os.osc(oscFreq) * ampEnv;
 
-  atkEnv = trig : en.ar(0.0002, 0.012);
-  snap = no.noise * atkEnv * attack : fi.highpass(1, 2500) : *(0.18);
-  clickOsc = os.osc(freq * 5.0) * atkEnv * attack * 0.35;
+  atkEnv = trig : en.ar(0.0002, attackdecay);
+  snap = no.noise * atkEnv * snaplevel : fi.highpass(1, 2500) : *(0.18);
+  clickOsc = os.osc(freq * 5.0) * atkEnv * clicklevel * 0.35;
 
   raw = body + snap + clickOsc;
   shaped = raw : *(drive) : ma.tanh;

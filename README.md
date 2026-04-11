@@ -28,6 +28,21 @@ Then open Carla and use the Patchbay view to connect:
 - `909` output -> `output` input
 - `output` outputs -> your audio output or recorder
 
+## DSP Changes
+
+After changing any `.dsp` file, rebuild and restart the suite before expecting
+new controls or DSP behavior to appear in the live RustDesk/SonoBus instance:
+
+```sh
+cd /home/music/music
+./kick-suite/build.sh
+./kick-suite/run.sh
+```
+
+`run.sh` is the repo's canonical live-launch path. It rebuilds stale binaries,
+restarts the Faust clients, rewires the graph, and refreshes the RustDesk /
+SonoBus-facing instance.
+
 ## Notes
 
 - `faust2jack` creates JACK clients directly, so Carla is used here as the
