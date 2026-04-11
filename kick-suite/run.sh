@@ -98,6 +98,17 @@ disconnect_if_linked() {
   pw-link -d "${output_port}" "${input_port}" >/dev/null 2>&1 || true
 }
 
+disconnect_module_sinks() {
+  local output_port="$1"
+
+  disconnect_if_linked "${output_port}" "${PLAYBACK_FL}"
+  disconnect_if_linked "${output_port}" "${PLAYBACK_FR}"
+  disconnect_if_linked "${output_port}" "${RUSTDESK_IN_FL}"
+  disconnect_if_linked "${output_port}" "${RUSTDESK_IN_FR}"
+  disconnect_if_linked "${output_port}" "SonoBus:in_1"
+  disconnect_if_linked "${output_port}" "SonoBus:in_2"
+}
+
 launch_client() {
   local binary="$1"
   local log_file="$2"
@@ -170,6 +181,13 @@ launch_client "${KICK_909_BIN}" "${LOG_DIR}/909.log"
 launch_client "${KICK_808_BIN}" "${LOG_DIR}/808.log"
 
 sleep 2
+
+disconnect_module_sinks "main:out_0"
+disconnect_module_sinks "main:out_1"
+disconnect_module_sinks "909:out_0"
+disconnect_module_sinks "808:out_0"
+disconnect_module_sinks "kick-mix:out_0"
+disconnect_module_sinks "kick-filters:out_0"
 
 if [[ "${SHOW_WINDOWS}" == "1" && -x "${SHOW_WINDOWS_SCRIPT}" ]]; then
   setsid -f env "${launch_env[@]}" sh -c "\"${SHOW_WINDOWS_SCRIPT}\" >/dev/null 2>&1 < /dev/null"

@@ -69,6 +69,17 @@ connect_if_missing() {
   pw-link "${output_port}" "${input_port}" >/dev/null 2>&1 || true
 }
 
+disconnect_module_sinks() {
+  local output_port="$1"
+
+  disconnect_if_linked "${output_port}" "${PLAYBACK_FL}"
+  disconnect_if_linked "${output_port}" "${PLAYBACK_FR}"
+  disconnect_if_linked "${output_port}" "${RUSTDESK_IN_FL}"
+  disconnect_if_linked "${output_port}" "${RUSTDESK_IN_FR}"
+  disconnect_if_linked "${output_port}" "SonoBus:in_1"
+  disconnect_if_linked "${output_port}" "SonoBus:in_2"
+}
+
 wait_for_port() {
   local port_name="$1"
   local tries="${2:-50}"
@@ -130,6 +141,13 @@ if [[ "${SONOBUS_DISABLE_RUSTDESK}" == "1" ]]; then
   disconnect_if_linked "${RUSTDESK_MON_FL}" "${RUSTDESK_IN_FL}"
   disconnect_if_linked "${RUSTDESK_MON_FR}" "${RUSTDESK_IN_FR}"
 fi
+
+disconnect_module_sinks "main:out_0"
+disconnect_module_sinks "main:out_1"
+disconnect_module_sinks "909:out_0"
+disconnect_module_sinks "808:out_0"
+disconnect_module_sinks "kick-mix:out_0"
+disconnect_module_sinks "kick-filters:out_0"
 
 disconnect_if_linked "output:out_0" "SonoBus:in_1"
 disconnect_if_linked "output:out_1" "SonoBus:in_1"
