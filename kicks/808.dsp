@@ -23,7 +23,7 @@ with {
   body = os.osc(oscFreq) * ampEnv;
 
   transientEnv = trig : en.ar(0.0003, transientdecay);
-  transient = os.osc(freq * 2.0) * transientEnv * transientlevel;
+  transient = no.noise : fi.bandpass(2, 800, 3000) * transientEnv * transientlevel;
 
   raw = body + transient;
   cutoff = 180 + tone * 1400;
@@ -31,7 +31,7 @@ with {
   out = raw
     : fi.lowpass(1, cutoff)
     : *(level);
-  meter = min(1.0, ampEnv + transientEnv * 0.25);
+  meter = min(1.0, ampEnv + transientEnv * transientlevel);
 };
 
 process(trigger) = kick808(triggerInput(trigger));
