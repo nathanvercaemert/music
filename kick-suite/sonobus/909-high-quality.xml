@@ -3,11 +3,11 @@
   <VALUE name="filterStateXML">
     <SonoBusAoO>
       <PARAM id="defPeerLevel" value="1.0"/>
-      <PARAM id="defnetauto" value="2.0"/>
-      <PARAM id="defnetbuf" value="0.0009999999310821295"/>
-      <PARAM id="defsendqual" value="9.0"/>
+      <PARAM id="defnetauto" value="1.0"/>
+      <PARAM id="defnetbuf" value="0.019999999552965164"/>
+      <PARAM id="defsendqual" value="7.0"/>
       <PARAM id="dry" value="0.0"/>
-      <PARAM id="dynamicresampling" value="0.0"/>
+      <PARAM id="dynamicresampling" value="1.0"/>
       <PARAM id="hearlatencytest" value="0.0"/>
       <PARAM id="ingain" value="1.0"/>
       <PARAM id="inmonmonopan" value="0.0"/>
