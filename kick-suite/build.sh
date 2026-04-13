@@ -6,7 +6,7 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 MAIN_DSP="${REPO_ROOT}/utilities/main.dsp"
 KICK_MIX_DSP="${REPO_ROOT}/utilities/kick-mix.dsp"
-KICK_FILTERS_DSP="${REPO_ROOT}/filters/kick-filters.dsp"
+VOICE_SPECTRAL_GOVERNANCE_DSP="${REPO_ROOT}/spectral-governance/voice-spectral-governance.dsp"
 OUTPUT_DSP="${REPO_ROOT}/utilities/output.dsp"
 KICK_909_DSP="${REPO_ROOT}/kicks/909.dsp"
 KICK_808_DSP="${REPO_ROOT}/kicks/808.dsp"
@@ -97,7 +97,7 @@ build_module() {
 
 build_module "${REPO_ROOT}/utilities/main" "${MAIN_DSP}" "${REPO_ROOT}/utilities"
 build_module "${REPO_ROOT}/utilities/kick-mix" "${KICK_MIX_DSP}" "${REPO_ROOT}/utilities"
-build_module "${REPO_ROOT}/filters/kick-filters" "${KICK_FILTERS_DSP}" "${REPO_ROOT}/filters"
+build_module "${REPO_ROOT}/spectral-governance/voice-spectral-governance" "${VOICE_SPECTRAL_GOVERNANCE_DSP}" "${REPO_ROOT}/spectral-governance"
 build_module "${REPO_ROOT}/utilities/output" "${OUTPUT_DSP}" "${REPO_ROOT}/utilities"
 build_module "${REPO_ROOT}/kicks/909" "${KICK_909_DSP}" "${REPO_ROOT}/kicks"
 build_module "${REPO_ROOT}/kicks/808" "${KICK_808_DSP}" "${REPO_ROOT}/kicks"
@@ -108,7 +108,7 @@ Build complete.
 Generated:
   ${REPO_ROOT}/utilities/main
   ${REPO_ROOT}/utilities/kick-mix
-  ${REPO_ROOT}/filters/kick-filters
+  ${REPO_ROOT}/spectral-governance/voice-spectral-governance
   ${REPO_ROOT}/utilities/output
   ${REPO_ROOT}/kicks/909
   ${REPO_ROOT}/kicks/808

@@ -18,6 +18,7 @@ SONOBUS_USERNAME="${SONOBUS_USERNAME:-music}"
 SONOBUS_PASSWORD="${SONOBUS_PASSWORD:-}"
 SONOBUS_SERVER="${SONOBUS_SERVER:-aoo.sonobus.net:10998}"
 SONOBUS_DISABLE_RUSTDESK="${SONOBUS_DISABLE_RUSTDESK:-1}"
+PIPEWIRE_LATENCY_VALUE="${PIPEWIRE_LATENCY_VALUE:-2048/48000}"
 
 DISPLAY_VALUE="${DISPLAY_VALUE:-:0}"
 XAUTHORITY_VALUE="${XAUTHORITY_VALUE:-${HOME}/.Xauthority}"
@@ -115,7 +116,7 @@ wait_for_optional_port() {
 
 pkill -f "${SONOBUS_BIN}" || true
 
-setsid -f sh -c "env DISPLAY='${DISPLAY_VALUE}' XAUTHORITY='${XAUTHORITY_VALUE}' XDG_RUNTIME_DIR='${XDG_RUNTIME_DIR_VALUE}' pw-jack '${SONOBUS_BIN}' --headless -l '${SETUP_FILE}' -g '${SONOBUS_GROUP}' -n '${SONOBUS_USERNAME}' ${SONOBUS_PASSWORD:+-p '${SONOBUS_PASSWORD}'} -c '${SONOBUS_SERVER}' >'${LOG_DIR}/sonobus.log' 2>&1 < /dev/null"
+setsid -f sh -c "env DISPLAY='${DISPLAY_VALUE}' XAUTHORITY='${XAUTHORITY_VALUE}' XDG_RUNTIME_DIR='${XDG_RUNTIME_DIR_VALUE}' PIPEWIRE_LATENCY='${PIPEWIRE_LATENCY_VALUE}' pw-jack '${SONOBUS_BIN}' --headless -l '${SETUP_FILE}' -g '${SONOBUS_GROUP}' -n '${SONOBUS_USERNAME}' ${SONOBUS_PASSWORD:+-p '${SONOBUS_PASSWORD}'} -c '${SONOBUS_SERVER}' >'${LOG_DIR}/sonobus.log' 2>&1 < /dev/null"
 
 wait_for_port "SonoBus:in_1"
 wait_for_port "SonoBus:out_1"
@@ -147,7 +148,7 @@ disconnect_module_sinks "main:out_1"
 disconnect_module_sinks "909:out_0"
 disconnect_module_sinks "808:out_0"
 disconnect_module_sinks "kick-mix:out_0"
-disconnect_module_sinks "kick-filters:out_0"
+  disconnect_module_sinks "voice-spectral-governance:out_0"
 
 disconnect_if_linked "output:out_0" "SonoBus:in_1"
 disconnect_if_linked "output:out_1" "SonoBus:in_1"

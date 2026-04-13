@@ -7,17 +7,17 @@ LOG_DIR="${SCRIPT_DIR}/.runlogs"
 BUILD_SCRIPT="${SCRIPT_DIR}/build.sh"
 SONOBUS_RUN_SCRIPT="${SCRIPT_DIR}/sonobus-run.sh"
 SHOW_WINDOWS_SCRIPT="${SCRIPT_DIR}/show-faust-windows.py"
-SHOW_WINDOWS="${SHOW_WINDOWS:-0}"
+SHOW_WINDOWS="${SHOW_WINDOWS:-1}"
 
 MAIN_BIN="${REPO_ROOT}/utilities/main"
 KICK_MIX_BIN="${REPO_ROOT}/utilities/kick-mix"
-KICK_FILTERS_BIN="${REPO_ROOT}/filters/kick-filters"
+VOICE_SPECTRAL_GOVERNANCE_BIN="${REPO_ROOT}/spectral-governance/voice-spectral-governance"
 OUTPUT_BIN="${REPO_ROOT}/utilities/output"
 KICK_909_BIN="${REPO_ROOT}/kicks/909"
 KICK_808_BIN="${REPO_ROOT}/kicks/808"
 MAIN_DSP="${REPO_ROOT}/utilities/main.dsp"
 KICK_MIX_DSP="${REPO_ROOT}/utilities/kick-mix.dsp"
-KICK_FILTERS_DSP="${REPO_ROOT}/filters/kick-filters.dsp"
+VOICE_SPECTRAL_GOVERNANCE_DSP="${REPO_ROOT}/spectral-governance/voice-spectral-governance.dsp"
 OUTPUT_DSP="${REPO_ROOT}/utilities/output.dsp"
 KICK_909_DSP="${REPO_ROOT}/kicks/909.dsp"
 KICK_808_DSP="${REPO_ROOT}/kicks/808.dsp"
@@ -27,6 +27,7 @@ GUI_DISPLAY="${GUI_DISPLAY:-${DISPLAY:-}}"
 GUI_XAUTHORITY="${GUI_XAUTHORITY:-${XAUTHORITY:-}}"
 GUI_DISPLAY_FALLBACK="${GUI_DISPLAY_FALLBACK:-:0}"
 GUI_XAUTHORITY_FALLBACK="${GUI_XAUTHORITY_FALLBACK:-${HOME}/.Xauthority}"
+PIPEWIRE_LATENCY_VALUE="${PIPEWIRE_LATENCY_VALUE:-2048/48000}"
 
 PLAYBACK_FL="${PLAYBACK_FL:-alsa_output.platform-fe00b840.mailbox.stereo-fallback:playback_FL}"
 PLAYBACK_FR="${PLAYBACK_FR:-alsa_output.platform-fe00b840.mailbox.stereo-fallback:playback_FR}"
@@ -112,7 +113,8 @@ disconnect_module_sinks() {
 launch_client() {
   local binary="$1"
   local log_file="$2"
-  setsid -f env "${launch_env[@]}" pw-jack "${binary}" >"${log_file}" 2>&1 < /dev/null
+  shift 2
+  setsid -f env "${launch_env[@]}" pw-jack "${binary}" "$@" >"${log_file}" 2>&1 < /dev/null
 }
 
 configure_carla() {
@@ -154,7 +156,7 @@ launch_carla_patchbay() {
   fi
 }
 
-if need_binary "${MAIN_BIN}" "${MAIN_DSP}" || need_binary "${KICK_MIX_BIN}" "${KICK_MIX_DSP}" || need_binary "${KICK_FILTERS_BIN}" "${KICK_FILTERS_DSP}" || need_binary "${OUTPUT_BIN}" "${OUTPUT_DSP}" || need_binary "${KICK_909_BIN}" "${KICK_909_DSP}" || need_binary "${KICK_808_BIN}" "${KICK_808_DSP}"; then
+if need_binary "${MAIN_BIN}" "${MAIN_DSP}" || need_binary "${KICK_MIX_BIN}" "${KICK_MIX_DSP}" || need_binary "${VOICE_SPECTRAL_GOVERNANCE_BIN}" "${VOICE_SPECTRAL_GOVERNANCE_DSP}" || need_binary "${OUTPUT_BIN}" "${OUTPUT_DSP}" || need_binary "${KICK_909_BIN}" "${KICK_909_DSP}" || need_binary "${KICK_808_BIN}" "${KICK_808_DSP}"; then
   "${BUILD_SCRIPT}"
 fi
 
@@ -163,19 +165,19 @@ configure_carla
 
 pkill -f "${MAIN_BIN}" || true
 pkill -f "${KICK_MIX_BIN}" || true
-pkill -f "${KICK_FILTERS_BIN}" || true
+pkill -f "${VOICE_SPECTRAL_GOVERNANCE_BIN}" || true
 pkill -f "${OUTPUT_BIN}" || true
 pkill -f "${KICK_909_BIN}" || true
 pkill -f "${KICK_808_BIN}" || true
 
-launch_env=()
+launch_env=("PIPEWIRE_LATENCY=${PIPEWIRE_LATENCY_VALUE}")
 if [[ -n "${GUI_DISPLAY}" && -n "${GUI_XAUTHORITY}" ]]; then
-  launch_env=("DISPLAY=${GUI_DISPLAY}" "XAUTHORITY=${GUI_XAUTHORITY}")
+  launch_env=("DISPLAY=${GUI_DISPLAY}" "XAUTHORITY=${GUI_XAUTHORITY}" "PIPEWIRE_LATENCY=${PIPEWIRE_LATENCY_VALUE}")
 fi
 
 launch_client "${MAIN_BIN}" "${LOG_DIR}/main.log"
 launch_client "${KICK_MIX_BIN}" "${LOG_DIR}/kick-mix.log"
-launch_client "${KICK_FILTERS_BIN}" "${LOG_DIR}/kick-filters.log"
+launch_client "${VOICE_SPECTRAL_GOVERNANCE_BIN}" "${LOG_DIR}/voice-spectral-governance.log" -httpd
 launch_client "${OUTPUT_BIN}" "${LOG_DIR}/output.log"
 launch_client "${KICK_909_BIN}" "${LOG_DIR}/909.log"
 launch_client "${KICK_808_BIN}" "${LOG_DIR}/808.log"
@@ -187,7 +189,7 @@ disconnect_module_sinks "main:out_1"
 disconnect_module_sinks "909:out_0"
 disconnect_module_sinks "808:out_0"
 disconnect_module_sinks "kick-mix:out_0"
-disconnect_module_sinks "kick-filters:out_0"
+disconnect_module_sinks "voice-spectral-governance:out_0"
 
 if [[ "${SHOW_WINDOWS}" == "1" && -x "${SHOW_WINDOWS_SCRIPT}" ]]; then
   setsid -f env "${launch_env[@]}" sh -c "\"${SHOW_WINDOWS_SCRIPT}\" >/dev/null 2>&1 < /dev/null"
@@ -197,8 +199,8 @@ pw-link "main:out_0" "909:in_0"
 pw-link "main:out_1" "808:in_0"
 pw-link "909:out_0" "kick-mix:in_0"
 pw-link "808:out_0" "kick-mix:in_1"
-pw-link "kick-mix:out_0" "kick-filters:in_0"
-pw-link "kick-filters:out_0" "output:in_0"
+pw-link "kick-mix:out_0" "voice-spectral-governance:in_0"
+pw-link "voice-spectral-governance:out_0" "output:in_0"
 
 if [[ "${USE_SONOBUS}" == "1" ]]; then
   if [[ ! -x "${SONOBUS_RUN_SCRIPT}" ]]; then
@@ -232,8 +234,8 @@ Ports wired:
   main:out_1 -> 808:in_0
   909:out_0 -> kick-mix:in_0
   808:out_0 -> kick-mix:in_1
-  kick-mix:out_0 -> kick-filters:in_0
-  kick-filters:out_0 -> output:in_0
+  kick-mix:out_0 -> voice-spectral-governance:in_0
+  voice-spectral-governance:out_0 -> output:in_0
 $(if [[ "${USE_SONOBUS}" == "1" ]]; then
     cat <<'EOT'
   output outputs -> SonoBus inputs
@@ -250,7 +252,7 @@ EOT
 Logs:
   ${LOG_DIR}/main.log
   ${LOG_DIR}/kick-mix.log
-  ${LOG_DIR}/kick-filters.log
+  ${LOG_DIR}/voice-spectral-governance.log
   ${LOG_DIR}/output.log
   ${LOG_DIR}/909.log
   ${LOG_DIR}/808.log
