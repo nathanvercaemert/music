@@ -4,7 +4,7 @@ declare name "voice-spectral-governance";
 
 macroFlavor  = vgroup("voice-spectral-governance", hslider("flavor[style:menu{'club':0;'vintage':1;'ambient':2;'industrial':3}]", 0, 0, 3, 1));
 cleanCtl     = vgroup("voice-spectral-governance", hslider("clean[style:slider]", 0.45, 0.0, 1.0, 0.001));
-ringFreqCtl  = vgroup("voice-spectral-governance", hslider("ring_freq[unit:Hz][style:slider]", 95, 30, 700, 0.1));
+ringFreqCtl  = vgroup("voice-spectral-governance", hslider("ring_freq[unit:Hz][style:slider]", 95, 30, 300, 0.1));
 ringCtl      = vgroup("voice-spectral-governance", hslider("ring_tame[style:slider]", 0.35, 0.0, 1.0, 0.001));
 attackFlavor = vgroup("voice-spectral-governance", hslider("attack_flavor[style:menu{'knock':0;'definition':1;'click':2}]", 1, 0, 2, 1));
 attackCtl    = vgroup("voice-spectral-governance", hslider("attack[style:slider]", 0.35, 0.0, 1.0, 0.001));
