@@ -98,7 +98,6 @@ midFocus(x) = x
 
 stageVoiceSpectralGovernance(x) = x
   : fi.dcblockerat(15)
-  : hpfStage
   : dynamicLowCleanup
   : mudStage
   : ringTamer
