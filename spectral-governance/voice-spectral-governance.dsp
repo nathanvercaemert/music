@@ -2,16 +2,16 @@ import("stdfaust.lib");
 
 declare name "voice-spectral-governance";
 
-macroFlavor      = vgroup("voice-spectral-governance", hslider("flavor[style:menu{'club':0;'vintage':1;'ambient':2;'industrial':3}]", 0, 0, 3, 1));
-cleanCtl         = vgroup("voice-spectral-governance", hslider("clean[style:slider]", 0.45, 0.0, 1.0, 0.001));
+cleanFlavorCtl   = vgroup("voice-spectral-governance", hslider("clean_flavor[style:menu{'club':0;'vintage':1;'ambient':2;'industrial':3}]", 0, 0, 3, 1));
+cleanAmountCtl   = vgroup("voice-spectral-governance", hslider("clean_amount[style:slider]", 0.45, 0.0, 1.0, 0.001));
 ringFreqCtl      = vgroup("voice-spectral-governance", hslider("ring_freq[unit:Hz][style:slider]", 95, 30, 300, 0.1));
 ringCtl          = vgroup("voice-spectral-governance", hslider("ring_tame[style:slider]", 0.35, 0.0, 1.0, 0.001));
 attackShapeFlavor = vgroup("voice-spectral-governance", hslider("attack_shape_flavor[style:menu{'knock':0;'definition':1;'click':2}]", 1, 0, 2, 1));
-attackShapeCtl    = vgroup("voice-spectral-governance", hslider("attack_shape[style:slider]", 0.35, 0.0, 1.0, 0.001));
-attackShapeQCtl   = vgroup("voice-spectral-governance", hslider("attack_shape_q[style:slider]", 1.0, 0.5, 3.0, 0.001));
+attackShapeAmountCtl = vgroup("voice-spectral-governance", hslider("attack_shape_amount[style:slider]", 1.0, 0.0, 1.0, 0.001));
+attackShapeQCtl   = vgroup("voice-spectral-governance", hslider("attack_shape_q[style:slider]", 0.5, 0.5, 3.0, 0.001));
 outLevelCtl      = vgroup("output", hslider("level[style:slider]", 1.0, 0.0, 1.5, 0.001));
 
-selectFlavor(a, b, c, d) = ba.if(macroFlavor < 0.5, a, ba.if(macroFlavor < 1.5, b, ba.if(macroFlavor < 2.5, c, d)));
+selectFlavor(a, b, c, d) = ba.if(cleanFlavorCtl < 0.5, a, ba.if(cleanFlavorCtl < 1.5, b, ba.if(cleanFlavorCtl < 2.5, c, d)));
 selectAtkFlavor(a, b, c) = ba.if(attackShapeFlavor < 0.5, a, ba.if(attackShapeFlavor < 1.5, b, c));
 
 clamp01(x)   = min(1.0, max(0.0, x));
@@ -19,9 +19,9 @@ smoothCtl(x) = x : si.smoo;
 safeFreq(x)  = max(10.0, min(ma.SR * 0.45, x));
 safeQ(x)     = max(0.2, x);
 
-cleanS       = clamp01(smoothCtl(cleanCtl));
+cleanS       = clamp01(smoothCtl(cleanAmountCtl));
 ringS        = clamp01(smoothCtl(ringCtl));
-attackShapeS = clamp01(smoothCtl(attackShapeCtl));
+attackShapeS = clamp01(smoothCtl(attackShapeAmountCtl));
 attackShapeQ = safeQ(smoothCtl(attackShapeQCtl));
 levelS       = smoothCtl(outLevelCtl);
 
