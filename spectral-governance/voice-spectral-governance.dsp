@@ -2,12 +2,12 @@ import("stdfaust.lib");
 
 declare name "voice-spectral-governance";
 
-macroFlavor  = vgroup("2A", hslider("flavor[style:menu{'club':0;'vintage':1;'ambient':2;'industrial':3}]", 0, 0, 3, 1));
-cleanCtl     = vgroup("2A", hslider("clean[style:slider]", 0.45, 0.0, 1.0, 0.001));
-ringFreqCtl  = vgroup("2A", hslider("ring_freq[unit:Hz][style:slider]", 95, 30, 700, 0.1));
-ringCtl      = vgroup("2A", hslider("ring_tame[style:slider]", 0.35, 0.0, 1.0, 0.001));
-attackFlavor = vgroup("2A", hslider("attack_flavor[style:menu{'knock':0;'definition':1;'click':2}]", 1, 0, 2, 1));
-attackCtl    = vgroup("2A", hslider("attack[style:slider]", 0.35, 0.0, 1.0, 0.001));
+macroFlavor  = vgroup("voice-spectral-governance", hslider("flavor[style:menu{'club':0;'vintage':1;'ambient':2;'industrial':3}]", 0, 0, 3, 1));
+cleanCtl     = vgroup("voice-spectral-governance", hslider("clean[style:slider]", 0.45, 0.0, 1.0, 0.001));
+ringFreqCtl  = vgroup("voice-spectral-governance", hslider("ring_freq[unit:Hz][style:slider]", 95, 30, 700, 0.1));
+ringCtl      = vgroup("voice-spectral-governance", hslider("ring_tame[style:slider]", 0.35, 0.0, 1.0, 0.001));
+attackFlavor = vgroup("voice-spectral-governance", hslider("attack_flavor[style:menu{'knock':0;'definition':1;'click':2}]", 1, 0, 2, 1));
+attackCtl    = vgroup("voice-spectral-governance", hslider("attack[style:slider]", 0.35, 0.0, 1.0, 0.001));
 outLevelCtl  = vgroup("output", hslider("level[style:slider]", 1.0, 0.0, 1.5, 0.001));
 
 selectFlavor(a, b, c, d) = ba.if(macroFlavor < 0.5, a, ba.if(macroFlavor < 1.5, b, ba.if(macroFlavor < 2.5, c, d)));
@@ -96,7 +96,7 @@ midFocus(x) = x
   : fi.peak_eq_cq(midGainDb, midHz, midQ)
   : fi.peak_eq_cq(0.0 - boxCutDb, boxHz, 0.85);
 
-stage2A(x) = x
+stageVoiceSpectralGovernance(x) = x
   : fi.dcblockerat(15)
   : hpfStage
   : dynamicLowCleanup
@@ -105,4 +105,4 @@ stage2A(x) = x
   : midFocus
   : *(levelS);
 
-process(input) = stage2A(input);
+process(input) = stageVoiceSpectralGovernance(input);
