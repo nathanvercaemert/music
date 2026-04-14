@@ -2,29 +2,30 @@ import("stdfaust.lib");
 
 declare name "voice-spectral-governance";
 
-macroFlavor  = vgroup("voice-spectral-governance", hslider("flavor[style:menu{'club':0;'vintage':1;'ambient':2;'industrial':3}]", 0, 0, 3, 1));
-cleanCtl     = vgroup("voice-spectral-governance", hslider("clean[style:slider]", 0.45, 0.0, 1.0, 0.001));
-ringFreqCtl  = vgroup("voice-spectral-governance", hslider("ring_freq[unit:Hz][style:slider]", 95, 30, 300, 0.1));
-ringCtl      = vgroup("voice-spectral-governance", hslider("ring_tame[style:slider]", 0.35, 0.0, 1.0, 0.001));
-attackFlavor = vgroup("voice-spectral-governance", hslider("attack_flavor[style:menu{'knock':0;'definition':1;'click':2}]", 1, 0, 2, 1));
-attackCtl    = vgroup("voice-spectral-governance", hslider("attack[style:slider]", 0.35, 0.0, 1.0, 0.001));
-outLevelCtl  = vgroup("output", hslider("level[style:slider]", 1.0, 0.0, 1.5, 0.001));
+macroFlavor      = vgroup("voice-spectral-governance", hslider("flavor[style:menu{'club':0;'vintage':1;'ambient':2;'industrial':3}]", 0, 0, 3, 1));
+cleanCtl         = vgroup("voice-spectral-governance", hslider("clean[style:slider]", 0.45, 0.0, 1.0, 0.001));
+ringFreqCtl      = vgroup("voice-spectral-governance", hslider("ring_freq[unit:Hz][style:slider]", 95, 30, 300, 0.1));
+ringCtl          = vgroup("voice-spectral-governance", hslider("ring_tame[style:slider]", 0.35, 0.0, 1.0, 0.001));
+attackShapeFlavor = vgroup("voice-spectral-governance", hslider("attack_shape_flavor[style:menu{'knock':0;'definition':1;'click':2}]", 1, 0, 2, 1));
+attackShapeCtl    = vgroup("voice-spectral-governance", hslider("attack_shape[style:slider]", 0.35, 0.0, 1.0, 0.001));
+attackShapeQCtl   = vgroup("voice-spectral-governance", hslider("attack_shape_q[style:slider]", 1.0, 0.5, 3.0, 0.001));
+outLevelCtl      = vgroup("output", hslider("level[style:slider]", 1.0, 0.0, 1.5, 0.001));
 
 selectFlavor(a, b, c, d) = ba.if(macroFlavor < 0.5, a, ba.if(macroFlavor < 1.5, b, ba.if(macroFlavor < 2.5, c, d)));
-selectAtkFlavor(a, b, c) = ba.if(attackFlavor < 0.5, a, ba.if(attackFlavor < 1.5, b, c));
+selectAtkFlavor(a, b, c) = ba.if(attackShapeFlavor < 0.5, a, ba.if(attackShapeFlavor < 1.5, b, c));
 
 clamp01(x)   = min(1.0, max(0.0, x));
 smoothCtl(x) = x : si.smoo;
 safeFreq(x)  = max(10.0, min(ma.SR * 0.45, x));
 safeQ(x)     = max(0.2, x);
 
-cleanS  = clamp01(smoothCtl(cleanCtl));
-ringS   = clamp01(smoothCtl(ringCtl));
-atkS    = clamp01(smoothCtl(attackCtl));
-levelS  = smoothCtl(outLevelCtl);
+cleanS       = clamp01(smoothCtl(cleanCtl));
+ringS        = clamp01(smoothCtl(ringCtl));
+attackShapeS = clamp01(smoothCtl(attackShapeCtl));
+attackShapeQ = safeQ(smoothCtl(attackShapeQCtl));
+levelS       = smoothCtl(outLevelCtl);
 
 cleanC  = cleanS * cleanS;
-atkC    = atkS * atkS;
 
 hpfBase = selectFlavor(22.0, 28.0, 18.0, 35.0);
 hpfLift = selectFlavor(55.0, 45.0, 40.0, 70.0);
@@ -56,15 +57,15 @@ midMul     = selectFlavor(1.00, 0.90, 1.05, 1.15);
 midHz      = safeFreq(midBaseHz * midMul);
 
 midQBase   = selectAtkFlavor(0.85, 1.10, 1.35);
-midQ       = safeQ(midQBase * selectFlavor(0.95, 0.90, 1.00, 1.10));
+midQ       = safeQ(midQBase * attackShapeQ * selectFlavor(0.95, 0.90, 1.00, 1.10));
 
-midGainMax = selectFlavor(6.0, 5.0, 4.0, 8.0);
-midGainDb  = atkC * midGainMax;
+midGainMax = selectFlavor(10.0, 8.0, 7.0, 12.0);
+midGainDb  = attackShapeS * midGainMax;
 
 boxBaseHz  = selectAtkFlavor(260.0, 360.0, 480.0);
 boxHz      = safeFreq(boxBaseHz * selectFlavor(1.00, 0.90, 1.10, 1.10));
-boxCutMax  = selectAtkFlavor(2.5, 3.5, 1.5);
-boxAmt     = clamp01(atkC * 0.80 + cleanC * 0.30);
+boxCutMax  = selectAtkFlavor(3.5, 4.5, 2.5);
+boxAmt     = clamp01(attackShapeS * 0.95 + cleanC * 0.25);
 boxCutDb   = boxCutMax * boxAmt;
 
 hpfStage(x) = x : fi.highpass(4, hpfHz);
