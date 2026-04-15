@@ -58,6 +58,16 @@ if ! command -v pw-link >/dev/null 2>&1; then
   exit 1
 fi
 
+set_default_audio_source() {
+  local node_name="$1"
+
+  if ! command -v pw-metadata >/dev/null 2>&1; then
+    return
+  fi
+
+  pw-metadata -n default 0 default.audio.source "{\"name\":\"${node_name}\"}" >/dev/null 2>&1 || true
+}
+
 disconnect_if_linked() {
   local output_port="$1"
   local input_port="$2"
@@ -113,6 +123,10 @@ wait_for_optional_port() {
 
   return 1
 }
+
+# SonoBus 1.7.x on this host misbehaves when PipeWire has no real default source.
+# Pointing the default source at the duplex output node restores stereo JACK inputs.
+set_default_audio_source "output"
 
 pkill -f "${SONOBUS_BIN}" || true
 
