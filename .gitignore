@@ -21,6 +21,8 @@ kick-suite/sonobus.env
 # Generated faust2jack build artifacts for current patches
 spectral-governance/voice-spectral-governance
 spectral-governance/voice-spectral-governance.dsp.cpp
+spectral-governance/send-voice-spectral-governance
+spectral-governance/send-voice-spectral-governance.cpp
 utilities/main
 utilities/main.cpp
 utilities/kick-mix

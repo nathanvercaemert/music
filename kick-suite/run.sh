@@ -12,14 +12,14 @@ SHOW_WINDOWS="${SHOW_WINDOWS:-1}"
 MAIN_BIN="${REPO_ROOT}/utilities/main"
 KICK_MIX_BIN="${REPO_ROOT}/utilities/kick-mix"
 VOICE_SPECTRAL_GOVERNANCE_BIN="${REPO_ROOT}/spectral-governance/voice-spectral-governance"
-ALT_VOICE_SPECTRAL_GOVERNANCE_BIN="${REPO_ROOT}/spectral-governance/alt-voice-spectral-governance"
+SEND_VOICE_SPECTRAL_GOVERNANCE_BIN="${REPO_ROOT}/spectral-governance/send-voice-spectral-governance"
 OUTPUT_BIN="${REPO_ROOT}/utilities/output"
 KICK_909_BIN="${REPO_ROOT}/kicks/909"
 KICK_808_BIN="${REPO_ROOT}/kicks/808"
 MAIN_DSP="${REPO_ROOT}/utilities/main.dsp"
 KICK_MIX_DSP="${REPO_ROOT}/utilities/kick-mix.dsp"
 VOICE_SPECTRAL_GOVERNANCE_DSP="${REPO_ROOT}/spectral-governance/voice-spectral-governance.dsp"
-ALT_VOICE_SPECTRAL_GOVERNANCE_DSP="${REPO_ROOT}/spectral-governance/alt-voice-spectral-governance.dsp"
+SEND_VOICE_SPECTRAL_GOVERNANCE_DSP="${REPO_ROOT}/spectral-governance/send-voice-spectral-governance.dsp"
 OUTPUT_DSP="${REPO_ROOT}/utilities/output.dsp"
 KICK_909_DSP="${REPO_ROOT}/kicks/909.dsp"
 KICK_808_DSP="${REPO_ROOT}/kicks/808.dsp"
@@ -158,7 +158,7 @@ launch_carla_patchbay() {
   fi
 }
 
-if need_binary "${MAIN_BIN}" "${MAIN_DSP}" || need_binary "${KICK_MIX_BIN}" "${KICK_MIX_DSP}" || need_binary "${VOICE_SPECTRAL_GOVERNANCE_BIN}" "${VOICE_SPECTRAL_GOVERNANCE_DSP}" || need_binary "${ALT_VOICE_SPECTRAL_GOVERNANCE_BIN}" "${ALT_VOICE_SPECTRAL_GOVERNANCE_DSP}" || need_binary "${OUTPUT_BIN}" "${OUTPUT_DSP}" || need_binary "${KICK_909_BIN}" "${KICK_909_DSP}" || need_binary "${KICK_808_BIN}" "${KICK_808_DSP}"; then
+if need_binary "${MAIN_BIN}" "${MAIN_DSP}" || need_binary "${KICK_MIX_BIN}" "${KICK_MIX_DSP}" || need_binary "${VOICE_SPECTRAL_GOVERNANCE_BIN}" "${VOICE_SPECTRAL_GOVERNANCE_DSP}" || need_binary "${SEND_VOICE_SPECTRAL_GOVERNANCE_BIN}" "${SEND_VOICE_SPECTRAL_GOVERNANCE_DSP}" || need_binary "${OUTPUT_BIN}" "${OUTPUT_DSP}" || need_binary "${KICK_909_BIN}" "${KICK_909_DSP}" || need_binary "${KICK_808_BIN}" "${KICK_808_DSP}"; then
   "${BUILD_SCRIPT}"
 fi
 
@@ -168,7 +168,7 @@ configure_carla
 pkill -f "${MAIN_BIN}" || true
 pkill -f "${KICK_MIX_BIN}" || true
 pkill -f "${VOICE_SPECTRAL_GOVERNANCE_BIN}" || true
-pkill -f "${ALT_VOICE_SPECTRAL_GOVERNANCE_BIN}" || true
+pkill -f "${SEND_VOICE_SPECTRAL_GOVERNANCE_BIN}" || true
 pkill -f "${OUTPUT_BIN}" || true
 pkill -f "${KICK_909_BIN}" || true
 pkill -f "${KICK_808_BIN}" || true
@@ -181,7 +181,7 @@ fi
 launch_client "${MAIN_BIN}" "${LOG_DIR}/main.log"
 launch_client "${KICK_MIX_BIN}" "${LOG_DIR}/kick-mix.log"
 launch_client "${VOICE_SPECTRAL_GOVERNANCE_BIN}" "${LOG_DIR}/voice-spectral-governance.log" -httpd
-launch_client "${ALT_VOICE_SPECTRAL_GOVERNANCE_BIN}" "${LOG_DIR}/alt-voice-spectral-governance.log"
+launch_client "${SEND_VOICE_SPECTRAL_GOVERNANCE_BIN}" "${LOG_DIR}/send-voice-spectral-governance.log"
 launch_client "${OUTPUT_BIN}" "${LOG_DIR}/output.log"
 launch_client "${KICK_909_BIN}" "${LOG_DIR}/909.log"
 launch_client "${KICK_808_BIN}" "${LOG_DIR}/808.log"
@@ -194,7 +194,7 @@ disconnect_module_sinks "909:out_0"
 disconnect_module_sinks "808:out_0"
 disconnect_module_sinks "kick-mix:out_0"
 disconnect_module_sinks "voice-spectral-governance:out_0"
-disconnect_module_sinks "alt-voice-spectral-governance:out_0"
+disconnect_module_sinks "send-voice-spectral-governance:out_0"
 
 if [[ "${SHOW_WINDOWS}" == "1" && -x "${SHOW_WINDOWS_SCRIPT}" ]]; then
   setsid -f env "${launch_env[@]}" sh -c "\"${SHOW_WINDOWS_SCRIPT}\" >/dev/null 2>&1 < /dev/null"
@@ -205,9 +205,9 @@ pw-link "main:out_1" "808:in_0"
 pw-link "909:out_0" "kick-mix:in_0"
 pw-link "808:out_0" "kick-mix:in_1"
 pw-link "kick-mix:out_0" "voice-spectral-governance:in_0"
-pw-link "kick-mix:out_0" "alt-voice-spectral-governance:in_0"
-pw-link "voice-spectral-governance:out_0" "alt-voice-spectral-governance:in_1"
-pw-link "alt-voice-spectral-governance:out_0" "output:in_0"
+pw-link "kick-mix:out_0" "send-voice-spectral-governance:in_0"
+pw-link "voice-spectral-governance:out_0" "send-voice-spectral-governance:in_1"
+pw-link "send-voice-spectral-governance:out_0" "output:in_0"
 
 if [[ "${USE_SONOBUS}" == "1" ]]; then
   if [[ ! -x "${SONOBUS_RUN_SCRIPT}" ]]; then
@@ -242,9 +242,9 @@ Ports wired:
   909:out_0 -> kick-mix:in_0
   808:out_0 -> kick-mix:in_1
   kick-mix:out_0 -> voice-spectral-governance:in_0
-  kick-mix:out_0 -> alt-voice-spectral-governance:in_0
-  voice-spectral-governance:out_0 -> alt-voice-spectral-governance:in_1
-  alt-voice-spectral-governance:out_0 -> output:in_0
+  kick-mix:out_0 -> send-voice-spectral-governance:in_0
+  voice-spectral-governance:out_0 -> send-voice-spectral-governance:in_1
+  send-voice-spectral-governance:out_0 -> output:in_0
 $(if [[ "${USE_SONOBUS}" == "1" ]]; then
     cat <<'EOT'
   output outputs -> SonoBus inputs
@@ -262,7 +262,7 @@ Logs:
   ${LOG_DIR}/main.log
   ${LOG_DIR}/kick-mix.log
   ${LOG_DIR}/voice-spectral-governance.log
-  ${LOG_DIR}/alt-voice-spectral-governance.log
+  ${LOG_DIR}/send-voice-spectral-governance.log
   ${LOG_DIR}/output.log
   ${LOG_DIR}/909.log
   ${LOG_DIR}/808.log
