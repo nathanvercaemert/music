@@ -12,8 +12,7 @@ pulseDuty = min(0.5, frequency * pulseSeconds);
 phase = +(frequency / ma.SR) ~ ma.frac;
 gate = run * (phase < pulseDuty);
 trigger = gate : ba.impulsify : *(level);
-meter = trigger : hbargraph("trigger", 0, 1);
-trigger909 = meter * (1.0 - alt);
-trigger808 = meter * alt;
+trigger909 = trigger * (1.0 - alt);
+trigger808 = trigger * alt;
 
 process = trigger909, trigger808;

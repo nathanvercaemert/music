@@ -1,7 +1,7 @@
 import("stdfaust.lib");
 
 triggerInput = _ > 0.5 : ba.impulsify;
-freq = hslider("freq[unit:Hz][style:slider]", 48, 30, 80, 0.1);
+freq = hslider("frequency[unit:Hz][style:slider]", 48, 30, 80, 0.1);
 decay = hslider("decay[unit:s][style:slider]", 0.9, 0.15, 3.0, 0.01);
 decayshape = hslider("decay_shape[style:slider]", -0.2, -1.0, 1.0, 0.001);
 pitchdecay = hslider("pitch_decay[unit:s][style:slider]", 0.06, 0.01, 0.25, 0.001);
