@@ -29,6 +29,7 @@ KICK_909_DSP="${REPO_ROOT}/kicks/909.dsp"
 KICK_808_DSP="${REPO_ROOT}/kicks/808.dsp"
 USE_SONOBUS="${USE_SONOBUS:-1}"
 USE_CARLA_PATCHBAY="${USE_CARLA_PATCHBAY:-0}"
+RECOVER_AUDIO_ON_START="${RECOVER_AUDIO_ON_START:-1}"
 GUI_DISPLAY="${GUI_DISPLAY:-${DISPLAY:-}}"
 GUI_XAUTHORITY="${GUI_XAUTHORITY:-${XAUTHORITY:-}}"
 GUI_DISPLAY_FALLBACK="${GUI_DISPLAY_FALLBACK:-:0}"
@@ -99,6 +100,28 @@ connect_if_missing() {
   pw-link "${output_port}" "${input_port}" >/dev/null 2>&1 || true
 }
 
+restart_user_audio_services() {
+  if ! command -v systemctl >/dev/null 2>&1; then
+    echo "systemctl is required for audio recovery restarts." >&2
+    return 1
+  fi
+
+  systemctl --user restart wireplumber pipewire pipewire-pulse
+
+  local tries=50
+  local delay=0.2
+  local i
+  for ((i = 0; i < tries; i += 1)); do
+    if pw-link -o >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep "${delay}"
+  done
+
+  echo "Timed out waiting for PipeWire after user service restart." >&2
+  return 1
+}
+
 disconnect_if_linked() {
   local output_port="$1"
   local input_port="$2"
@@ -164,6 +187,10 @@ launch_carla_patchbay() {
 
 if need_binary "${MAIN_BIN}" "${MAIN_DSP}" || need_binary "${KICK_MIX_BIN}" "${KICK_MIX_DSP}" || need_binary "${VOICE_SPECTRAL_GOVERNANCE_BIN}" "${VOICE_SPECTRAL_GOVERNANCE_DSP}" || need_binary "${SEND_VOICE_SPECTRAL_GOVERNANCE_BIN}" "${SEND_VOICE_SPECTRAL_GOVERNANCE_DSP}" || need_binary "${VOICE_SATURATION_BIN}" "${VOICE_SATURATION_DSP}" || need_binary "${SEND_VOICE_SATURATION_BIN}" "${SEND_VOICE_SATURATION_DSP}" || need_binary "${OUTPUT_BIN}" "${OUTPUT_DSP}" || need_binary "${KICK_909_BIN}" "${KICK_909_DSP}" || need_binary "${KICK_808_BIN}" "${KICK_808_DSP}"; then
   "${BUILD_SCRIPT}"
+fi
+
+if [[ "${RECOVER_AUDIO_ON_START}" == "1" ]]; then
+  restart_user_audio_services
 fi
 
 detect_gui_session
