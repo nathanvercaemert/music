@@ -132,7 +132,7 @@
     </SonoBusAoO>
   </VALUE>
   <VALUE name="audioSetup">
-    <DEVICESETUP deviceType="JACK" audioOutputDeviceName="" audioInputDeviceName="VCV Rack"
+    <DEVICESETUP deviceType="JACK" audioOutputDeviceName="" audioInputDeviceName=""
                  audioDeviceRate="48000.0" audioDeviceBufferSize="2048"/>
   </VALUE>
   <VALUE name="shouldOverrideSampleRate" val="1"/>
