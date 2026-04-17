@@ -260,15 +260,15 @@ start_sonobus() {
 }
 
 sonobus_log_is_healthy() {
-  ! grep -Eq "sink not found|channel count 0 out of range" "${LOG_DIR}/sonobus.log"
+  ! grep -Eq "channel count 0 out of range" "${LOG_DIR}/sonobus.log"
 }
 
 wait_for_healthy_sonobus() {
-  wait_for_port "SonoBus:in_1"
-  wait_for_port "SonoBus:out_1"
-  wait_for_port "SonoBus:out_2"
-  wait_for_port "output:out_0"
-  wait_for_port "output:out_1"
+  wait_for_port "SonoBus:in_1" || return 1
+  wait_for_port "SonoBus:out_1" || return 1
+  wait_for_port "SonoBus:out_2" || return 1
+  wait_for_port "output:out_0" || return 1
+  wait_for_port "output:out_1" || return 1
   wait_for_optional_port "SonoBus:in_2" 15 0.2
   sonobus_log_is_healthy
 }
@@ -311,7 +311,7 @@ for setup_mode in "${setup_modes[@]}"; do
       echo "SonoBus startup attempt ${attempt}/${SONOBUS_START_RETRIES} without setup file failed health checks; retrying." >&2
     fi
     stop_sonobus
-    sleep 1
+    sleep 2
   done
 done
 

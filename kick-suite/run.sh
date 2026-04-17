@@ -6,6 +6,7 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 LOG_DIR="${SCRIPT_DIR}/.runlogs"
 BUILD_SCRIPT="${SCRIPT_DIR}/build.sh"
 SONOBUS_RUN_SCRIPT="${SCRIPT_DIR}/sonobus-run.sh"
+WATCHDOG_SCRIPT="${SCRIPT_DIR}/watchdog.sh"
 SHOW_WINDOWS_SCRIPT="${SCRIPT_DIR}/show-faust-windows.py"
 SHOW_WINDOWS="${SHOW_WINDOWS:-1}"
 
@@ -196,6 +197,7 @@ fi
 detect_gui_session
 configure_carla
 
+pkill -f "${WATCHDOG_SCRIPT}" || true
 pkill -f "${MAIN_BIN}" || true
 pkill -f "${KICK_MIX_BIN}" || true
 pkill -f "${VOICE_SPECTRAL_GOVERNANCE_BIN}" || true
@@ -256,6 +258,18 @@ if [[ "${USE_SONOBUS}" == "1" ]]; then
   fi
 
   "${SONOBUS_RUN_SCRIPT}"
+
+  if [[ -x "${WATCHDOG_SCRIPT}" ]]; then
+    watchdog_env=("${launch_env[@]}")
+    for var in SONOBUS_BIN SONOBUS_GROUP SONOBUS_USERNAME SONOBUS_PASSWORD SONOBUS_SERVER \
+               SONOBUS_ENV_FILE SONOBUS_DISABLE_RUSTDESK SONOBUS_KILL_RUSTDESK \
+               SONOBUS_START_RETRIES SONOBUS_ALLOW_SETUP_FALLBACK SONOBUS_PREFER_SAVED_SETUP \
+               WATCHDOG_INTERVAL WATCHDOG_MIN_RESTART_INTERVAL; do
+      [[ -v "${var}" ]] && watchdog_env+=("${var}=${!var}")
+    done
+    setsid -f env "${watchdog_env[@]}" "${WATCHDOG_SCRIPT}" \
+      >>"${LOG_DIR}/watchdog.log" 2>&1 < /dev/null
+  fi
 else
   connect_if_missing "output:out_0" "${PLAYBACK_FL}"
   connect_if_missing "output:out_1" "${PLAYBACK_FR}"
@@ -312,4 +326,5 @@ Logs:
   ${LOG_DIR}/909.log
   ${LOG_DIR}/808.log
   ${LOG_DIR}/carla-patchbay.log
+  ${LOG_DIR}/watchdog.log
 EOF
