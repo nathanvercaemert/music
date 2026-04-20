@@ -7,6 +7,7 @@ LOG_DIR="${SCRIPT_DIR}/.runlogs"
 BUILD_SCRIPT="${SCRIPT_DIR}/build.sh"
 SONOBUS_RUN_SCRIPT="${SCRIPT_DIR}/sonobus-run.sh"
 WATCHDOG_SCRIPT="${SCRIPT_DIR}/watchdog.sh"
+HARD_RESET_SCRIPT="${SCRIPT_DIR}/hard-reset.sh"
 SHOW_WINDOWS_SCRIPT="${SCRIPT_DIR}/show-faust-windows.py"
 SHOW_WINDOWS="${SHOW_WINDOWS:-1}"
 
@@ -31,6 +32,8 @@ KICK_808_DSP="${REPO_ROOT}/kicks/808.dsp"
 USE_SONOBUS="${USE_SONOBUS:-1}"
 USE_CARLA_PATCHBAY="${USE_CARLA_PATCHBAY:-0}"
 RECOVER_AUDIO_ON_START="${RECOVER_AUDIO_ON_START:-1}"
+AOO_SERVER_BIN="${AOO_SERVER_BIN:-${SCRIPT_DIR}/bin/aooserver}"
+SONOBUS_BIN="${SONOBUS_BIN:-$(command -v sonobus || true)}"
 GUI_DISPLAY="${GUI_DISPLAY:-${DISPLAY:-}}"
 GUI_XAUTHORITY="${GUI_XAUTHORITY:-${XAUTHORITY:-}}"
 GUI_DISPLAY_FALLBACK="${GUI_DISPLAY_FALLBACK:-:0}"
@@ -123,6 +126,21 @@ restart_user_audio_services() {
   return 1
 }
 
+stop_existing_suite() {
+  pkill -f "${WATCHDOG_SCRIPT}" || true
+  [[ -n "${SONOBUS_BIN}" ]] && pkill -f "${SONOBUS_BIN}" || true
+  pkill -f "${AOO_SERVER_BIN}" || true
+  pkill -f "${MAIN_BIN}" || true
+  pkill -f "${KICK_MIX_BIN}" || true
+  pkill -f "${VOICE_SPECTRAL_GOVERNANCE_BIN}" || true
+  pkill -f "${SEND_VOICE_SPECTRAL_GOVERNANCE_BIN}" || true
+  pkill -f "${VOICE_SATURATION_BIN}" || true
+  pkill -f "${SEND_VOICE_SATURATION_BIN}" || true
+  pkill -f "${OUTPUT_BIN}" || true
+  pkill -f "${KICK_909_BIN}" || true
+  pkill -f "${KICK_808_BIN}" || true
+}
+
 disconnect_if_linked() {
   local output_port="$1"
   local input_port="$2"
@@ -190,23 +208,17 @@ if need_binary "${MAIN_BIN}" "${MAIN_DSP}" || need_binary "${KICK_MIX_BIN}" "${K
   "${BUILD_SCRIPT}"
 fi
 
-if [[ "${RECOVER_AUDIO_ON_START}" == "1" ]]; then
+if [[ "${RECOVER_AUDIO_ON_START}" == "1" && -x "${HARD_RESET_SCRIPT}" ]]; then
+  "${HARD_RESET_SCRIPT}"
+elif [[ "${RECOVER_AUDIO_ON_START}" == "1" ]]; then
+  stop_existing_suite
   restart_user_audio_services
 fi
 
 detect_gui_session
 configure_carla
 
-pkill -f "${WATCHDOG_SCRIPT}" || true
-pkill -f "${MAIN_BIN}" || true
-pkill -f "${KICK_MIX_BIN}" || true
-pkill -f "${VOICE_SPECTRAL_GOVERNANCE_BIN}" || true
-pkill -f "${SEND_VOICE_SPECTRAL_GOVERNANCE_BIN}" || true
-pkill -f "${VOICE_SATURATION_BIN}" || true
-pkill -f "${SEND_VOICE_SATURATION_BIN}" || true
-pkill -f "${OUTPUT_BIN}" || true
-pkill -f "${KICK_909_BIN}" || true
-pkill -f "${KICK_808_BIN}" || true
+stop_existing_suite
 
 launch_env=("PIPEWIRE_LATENCY=${PIPEWIRE_LATENCY_VALUE}")
 if [[ -n "${GUI_DISPLAY}" && -n "${GUI_XAUTHORITY}" ]]; then
@@ -264,6 +276,7 @@ if [[ "${USE_SONOBUS}" == "1" ]]; then
     for var in SONOBUS_BIN SONOBUS_GROUP SONOBUS_USERNAME SONOBUS_PASSWORD SONOBUS_SERVER \
                SONOBUS_ENV_FILE SONOBUS_DISABLE_RUSTDESK SONOBUS_KILL_RUSTDESK \
                SONOBUS_START_RETRIES SONOBUS_ALLOW_SETUP_FALLBACK SONOBUS_PREFER_SAVED_SETUP \
+               AOO_SERVER_BIN AOO_SERVER_RESTART \
                WATCHDOG_INTERVAL WATCHDOG_MIN_RESTART_INTERVAL; do
       [[ -v "${var}" ]] && watchdog_env+=("${var}=${!var}")
     done

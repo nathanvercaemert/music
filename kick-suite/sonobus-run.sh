@@ -20,6 +20,7 @@ SONOBUS_SERVER="${SONOBUS_SERVER:-aoo.sonobus.net:10998}"
 AOO_SERVER_BIN="${AOO_SERVER_BIN:-${SCRIPT_DIR}/bin/aooserver}"
 AOO_SERVER_LOG_DIR="${AOO_SERVER_LOG_DIR:-${LOG_DIR}}"
 AOO_SERVER_START_TIMEOUT="${AOO_SERVER_START_TIMEOUT:-5}"
+AOO_SERVER_RESTART="${AOO_SERVER_RESTART:-1}"
 SONOBUS_DISABLE_RUSTDESK="${SONOBUS_DISABLE_RUSTDESK:-1}"
 SONOBUS_KILL_RUSTDESK="${SONOBUS_KILL_RUSTDESK:-0}"
 SONOBUS_START_RETRIES="${SONOBUS_START_RETRIES:-3}"
@@ -164,6 +165,16 @@ ensure_local_aoo_server() {
   if [[ ! -x "${AOO_SERVER_BIN}" ]]; then
     echo "Local AOO server requested via ${SONOBUS_SERVER}, but aooserver is not executable: ${AOO_SERVER_BIN}" >&2
     exit 1
+  fi
+
+  if [[ "${AOO_SERVER_RESTART}" == "1" ]]; then
+    pkill -f "${AOO_SERVER_BIN} -p ${server_port}" >/dev/null 2>&1 || true
+    for ((i = 0; i < 25; i += 1)); do
+      if ! udp_port_is_listening "${server_port}"; then
+        break
+      fi
+      sleep "${delay}"
+    done
   fi
 
   if udp_port_is_listening "${server_port}"; then
