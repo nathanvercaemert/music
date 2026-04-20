@@ -6,7 +6,7 @@ LOG_DIR="${SCRIPT_DIR}/.runlogs"
 SONOBUS_RUN_SCRIPT="${SCRIPT_DIR}/sonobus-run.sh"
 WATCHDOG_INTERVAL="${WATCHDOG_INTERVAL:-30}"
 WATCHDOG_MIN_RESTART_INTERVAL="${WATCHDOG_MIN_RESTART_INTERVAL:-60}"
-LOCK_FILE="${LOG_DIR}/watchdog.lock"
+WATCHDOG_SUITE_GONE_THRESHOLD="${WATCHDOG_SUITE_GONE_THRESHOLD:-3}"
 
 mkdir -p "${LOG_DIR}"
 
@@ -24,10 +24,7 @@ suite_is_running() {
 
 restart_sonobus() {
   log "SonoBus is down; restarting via sonobus-run.sh"
-  if (
-    flock -n 9 || { log "Another restart already in progress; skipping."; exit 1; }
-    "${SONOBUS_RUN_SCRIPT}"
-  ) 9>"${LOCK_FILE}"; then
+  if "${SONOBUS_RUN_SCRIPT}" 9<&-; then
     log "SonoBus restarted successfully."
   else
     log "SonoBus restart failed (exit $?); will retry next cycle."
@@ -37,14 +34,21 @@ restart_sonobus() {
 log "Watchdog started (interval=${WATCHDOG_INTERVAL}s, min_restart=${WATCHDOG_MIN_RESTART_INTERVAL}s)."
 
 last_restart=0
+suite_gone_count=0
 
 while true; do
   sleep "${WATCHDOG_INTERVAL}"
 
   if ! suite_is_running; then
-    log "Core DSP modules are gone (output:out_0 missing); watchdog exiting."
-    exit 0
+    suite_gone_count=$(( suite_gone_count + 1 ))
+    if (( suite_gone_count >= WATCHDOG_SUITE_GONE_THRESHOLD )); then
+      log "Core DSP modules missing for ${suite_gone_count} consecutive checks; watchdog exiting."
+      exit 0
+    fi
+    log "Core DSP modules not visible (output:out_0 missing); check ${suite_gone_count}/${WATCHDOG_SUITE_GONE_THRESHOLD}."
+    continue
   fi
+  suite_gone_count=0
 
   if ! sonobus_port_exists; then
     now="$(date +%s)"
