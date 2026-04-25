@@ -12,7 +12,8 @@ pulseDuty = min(0.5, frequency * pulseSeconds);
 phase = +(frequency / ma.SR) ~ ma.frac;
 gate = run * (phase < pulseDuty);
 trigger = gate : ba.impulsify : *(level);
-trigger909 = trigger * (1.0 - alt);
-trigger808 = trigger * alt;
+alt808 = alt > 0.5;
+trigger909 = trigger * (1.0 - alt808);
+trigger808 = trigger * alt808;
 
 process = trigger909, trigger808;

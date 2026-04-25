@@ -14,7 +14,7 @@ tone = hslider("tone[style:slider]", 0.62, 0.0, 1.0, 0.001);
 level = hslider("level[style:slider]", 0.8, 0.0, 1.0, 0.001);
 
 shapeExponent(shape) = pow(8.0, shape);
-shapeEnvelope(shape, env) = max(0.0, min(1.0, pow(max(0.000001, env), shapeExponent(shape))));
+shapeEnvelope(shape, env) = max(0.0, min(1.0, pow(max(0.0, env), shapeExponent(shape))));
 
 kick(trig) = attach(out, meter : hbargraph("envelope", 0, 1))
 with {
