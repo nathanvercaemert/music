@@ -4,6 +4,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 LOG_DIR="${SCRIPT_DIR}/.runlogs"
+LOGGING_LIB="${SCRIPT_DIR}/lib/logging.sh"
 BUILD_SCRIPT="${SCRIPT_DIR}/build.sh"
 SONOBUS_RUN_SCRIPT="${SCRIPT_DIR}/sonobus-run.sh"
 WATCHDOG_SCRIPT="${SCRIPT_DIR}/watchdog.sh"
@@ -52,6 +53,33 @@ CARLA_LD_LIBRARY_PATH="${CARLA_LD_LIBRARY_PATH:-}"
 CARLA_PYTHONPATH="${CARLA_PYTHONPATH:-}"
 
 mkdir -p "${LOG_DIR}"
+
+# shellcheck disable=SC1090
+source "${LOGGING_LIB}"
+ks_start_new_run
+LOG_DIR="$(ks_log_subdir logs)"
+mkdir -p "${LOG_DIR}"
+ks_event info run suite_start "kick suite launch started" git_sha="$(ks_git_sha)" use_sonobus="${USE_SONOBUS}" recover_audio_on_start="${RECOVER_AUDIO_ON_START}"
+
+log_previous_hard_reset_marker() {
+  local marker="${KS_LOG_DIR}/last-hard-reset.env"
+  local reset_run_id reset_completed_at reset_completed_epoch reset_result reset_age_s
+
+  [[ -f "${marker}" ]] || return 0
+
+  reset_run_id="$(awk -F= '$1 == "run_id" { print $2; exit }' "${marker}" 2>/dev/null || true)"
+  reset_completed_at="$(awk -F= '$1 == "completed_at" { print $2; exit }' "${marker}" 2>/dev/null || true)"
+  reset_completed_epoch="$(awk -F= '$1 == "completed_epoch" { print $2; exit }' "${marker}" 2>/dev/null || true)"
+  reset_result="$(awk -F= '$1 == "result" { print $2; exit }' "${marker}" 2>/dev/null || true)"
+  reset_age_s="unknown"
+  if [[ "${reset_completed_epoch}" =~ ^[0-9]+$ ]]; then
+    reset_age_s="$(( $(date +%s) - reset_completed_epoch ))"
+  fi
+
+  ks_event info run previous_hard_reset "most recent hard reset marker before this launch" hard_reset_run_id="${reset_run_id:-unknown}" hard_reset_completed_at="${reset_completed_at:-unknown}" hard_reset_age_s="${reset_age_s}" hard_reset_result="${reset_result:-unknown}"
+}
+
+log_previous_hard_reset_marker
 
 detect_gui_session() {
   if [[ -n "${GUI_DISPLAY}" && -n "${GUI_XAUTHORITY}" ]]; then
@@ -102,6 +130,19 @@ connect_if_missing() {
   local output_port="$1"
   local input_port="$2"
   pw-link "${output_port}" "${input_port}" >/dev/null 2>&1 || true
+}
+
+link_required() {
+  local output_port="$1"
+  local input_port="$2"
+
+  if pw-link "${output_port}" "${input_port}" >/dev/null 2>&1; then
+    return 0
+  fi
+
+  ks_event error run link_failed "required link failed" output_port="${output_port}" input_port="${input_port}"
+  ks_snapshot link_failed "${output_port} -> ${input_port}"
+  return 1
 }
 
 restart_user_audio_services() {
@@ -162,6 +203,7 @@ launch_client() {
   local binary="$1"
   local log_file="$2"
   shift 2
+  ks_event info run client_launch "launching DSP client" binary="${binary}" log_file="${log_file}" args="$*"
   setsid -f env "${launch_env[@]}" pw-jack "${binary}" "$@" >"${log_file}" 2>&1 < /dev/null
 }
 
@@ -205,12 +247,16 @@ launch_carla_patchbay() {
 }
 
 if need_binary "${MAIN_BIN}" "${MAIN_DSP}" || need_binary "${KICK_MIX_BIN}" "${KICK_MIX_DSP}" || need_binary "${VOICE_SPECTRAL_GOVERNANCE_BIN}" "${VOICE_SPECTRAL_GOVERNANCE_DSP}" || need_binary "${SEND_VOICE_SPECTRAL_GOVERNANCE_BIN}" "${SEND_VOICE_SPECTRAL_GOVERNANCE_DSP}" || need_binary "${VOICE_SATURATION_BIN}" "${VOICE_SATURATION_DSP}" || need_binary "${SEND_VOICE_SATURATION_BIN}" "${SEND_VOICE_SATURATION_DSP}" || need_binary "${OUTPUT_BIN}" "${OUTPUT_DSP}" || need_binary "${KICK_909_BIN}" "${KICK_909_DSP}" || need_binary "${KICK_808_BIN}" "${KICK_808_DSP}"; then
+  ks_event info run build_required "one or more binaries are missing or older than DSP sources"
   "${BUILD_SCRIPT}"
+  ks_event info run build_complete "build script completed"
 fi
 
 if [[ "${RECOVER_AUDIO_ON_START}" == "1" && -x "${HARD_RESET_SCRIPT}" ]]; then
+  ks_event info run hard_reset_requested "running hard reset before suite launch"
   "${HARD_RESET_SCRIPT}"
 elif [[ "${RECOVER_AUDIO_ON_START}" == "1" ]]; then
+  ks_event info run audio_recovery_requested "running inline audio service recovery"
   stop_existing_suite
   restart_user_audio_services
 fi
@@ -225,15 +271,15 @@ if [[ -n "${GUI_DISPLAY}" && -n "${GUI_XAUTHORITY}" ]]; then
   launch_env=("DISPLAY=${GUI_DISPLAY}" "XAUTHORITY=${GUI_XAUTHORITY}" "PIPEWIRE_LATENCY=${PIPEWIRE_LATENCY_VALUE}")
 fi
 
-launch_client "${MAIN_BIN}" "${LOG_DIR}/main.log"
-launch_client "${KICK_MIX_BIN}" "${LOG_DIR}/kick-mix.log"
-launch_client "${VOICE_SPECTRAL_GOVERNANCE_BIN}" "${LOG_DIR}/voice-spectral-governance.log" -httpd
-launch_client "${SEND_VOICE_SPECTRAL_GOVERNANCE_BIN}" "${LOG_DIR}/send-voice-spectral-governance.log"
-launch_client "${VOICE_SATURATION_BIN}" "${LOG_DIR}/voice-saturation.log" -httpd
-launch_client "${SEND_VOICE_SATURATION_BIN}" "${LOG_DIR}/send-voice-saturation.log"
-launch_client "${OUTPUT_BIN}" "${LOG_DIR}/output.log"
-launch_client "${KICK_909_BIN}" "${LOG_DIR}/909.log"
-launch_client "${KICK_808_BIN}" "${LOG_DIR}/808.log"
+launch_client "${MAIN_BIN}" "$(ks_component_log_path main.log)"
+launch_client "${KICK_MIX_BIN}" "$(ks_component_log_path kick-mix.log)"
+launch_client "${VOICE_SPECTRAL_GOVERNANCE_BIN}" "$(ks_component_log_path voice-spectral-governance.log)" -httpd
+launch_client "${SEND_VOICE_SPECTRAL_GOVERNANCE_BIN}" "$(ks_component_log_path send-voice-spectral-governance.log)"
+launch_client "${VOICE_SATURATION_BIN}" "$(ks_component_log_path voice-saturation.log)" -httpd
+launch_client "${SEND_VOICE_SATURATION_BIN}" "$(ks_component_log_path send-voice-saturation.log)"
+launch_client "${OUTPUT_BIN}" "$(ks_component_log_path output.log)"
+launch_client "${KICK_909_BIN}" "$(ks_component_log_path 909.log)"
+launch_client "${KICK_808_BIN}" "$(ks_component_log_path 808.log)"
 
 sleep 2
 
@@ -251,17 +297,18 @@ if [[ "${SHOW_WINDOWS}" == "1" && -x "${SHOW_WINDOWS_SCRIPT}" ]]; then
   setsid -f env "${launch_env[@]}" sh -c "\"${SHOW_WINDOWS_SCRIPT}\" >/dev/null 2>&1 < /dev/null"
 fi
 
-pw-link "main:out_0" "909:in_0"
-pw-link "main:out_1" "808:in_0"
-pw-link "909:out_0" "kick-mix:in_0"
-pw-link "808:out_0" "kick-mix:in_1"
-pw-link "kick-mix:out_0" "voice-spectral-governance:in_0"
-pw-link "kick-mix:out_0" "send-voice-spectral-governance:in_0"
-pw-link "voice-spectral-governance:out_0" "send-voice-spectral-governance:in_1"
-pw-link "send-voice-spectral-governance:out_0" "voice-saturation:in_0"
-pw-link "send-voice-spectral-governance:out_0" "send-voice-saturation:in_0"
-pw-link "voice-saturation:out_0" "send-voice-saturation:in_1"
-pw-link "send-voice-saturation:out_0" "output:in_0"
+link_required "main:out_0" "909:in_0"
+link_required "main:out_1" "808:in_0"
+link_required "909:out_0" "kick-mix:in_0"
+link_required "808:out_0" "kick-mix:in_1"
+link_required "kick-mix:out_0" "voice-spectral-governance:in_0"
+link_required "kick-mix:out_0" "send-voice-spectral-governance:in_0"
+link_required "voice-spectral-governance:out_0" "send-voice-spectral-governance:in_1"
+link_required "send-voice-spectral-governance:out_0" "voice-saturation:in_0"
+link_required "send-voice-spectral-governance:out_0" "send-voice-saturation:in_0"
+link_required "voice-saturation:out_0" "send-voice-saturation:in_1"
+link_required "send-voice-saturation:out_0" "output:in_0"
+ks_event info run graph_linked "core suite graph linked" graph_hash="$(ks_graph_hash)"
 
 if [[ "${USE_SONOBUS}" == "1" ]]; then
   if [[ ! -x "${SONOBUS_RUN_SCRIPT}" ]]; then
@@ -277,9 +324,11 @@ if [[ "${USE_SONOBUS}" == "1" ]]; then
                SONOBUS_ENV_FILE SONOBUS_DISABLE_RUSTDESK SONOBUS_KILL_RUSTDESK \
                SONOBUS_START_RETRIES SONOBUS_ALLOW_SETUP_FALLBACK SONOBUS_PREFER_SAVED_SETUP \
                AOO_SERVER_BIN AOO_SERVER_RESTART \
-               WATCHDOG_INTERVAL WATCHDOG_MIN_RESTART_INTERVAL; do
+               WATCHDOG_INTERVAL WATCHDOG_MIN_RESTART_INTERVAL \
+               KS_RUN_ID KS_RUN_DIR KS_LOG_DIR KS_RUN_STARTED_EPOCH; do
       [[ -v "${var}" ]] && watchdog_env+=("${var}=${!var}")
     done
+    ln -sfn "${LOG_DIR}/watchdog.log" "${SCRIPT_DIR}/.runlogs/watchdog.log" 2>/dev/null || true
     setsid -f env "${watchdog_env[@]}" "${WATCHDOG_SCRIPT}" \
       >>"${LOG_DIR}/watchdog.log" 2>&1 < /dev/null
   fi
@@ -299,6 +348,10 @@ if [[ "${USE_CARLA_PATCHBAY}" == "1" && -x "${CARLA_PATCHBAY}" ]]; then
   pkill -f "${CARLA_PATCHBAY}" || true
   launch_carla_patchbay
 fi
+
+ks_event info run suite_started "kick suite launch completed" graph_hash="$(ks_graph_hash)" summary="${KS_LOG_DIR}/current-summary.md"
+ks_log_health
+ks_update_summary
 
 cat <<EOF
 Kick suite started.
@@ -340,4 +393,6 @@ Logs:
   ${LOG_DIR}/808.log
   ${LOG_DIR}/carla-patchbay.log
   ${LOG_DIR}/watchdog.log
+  ${KS_LOG_DIR}/current-summary.md
+  ${KS_RUN_DIR}
 EOF

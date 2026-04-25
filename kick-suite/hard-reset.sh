@@ -4,6 +4,12 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 LOG_DIR="${SCRIPT_DIR}/.runlogs"
+LOGGING_LIB="${SCRIPT_DIR}/lib/logging.sh"
+
+# shellcheck disable=SC1090
+source "${LOGGING_LIB}"
+ks_use_current_or_new
+LOG_DIR="$(ks_log_subdir logs)"
 
 MAIN_BIN="${REPO_ROOT}/utilities/main"
 KICK_MIX_BIN="${REPO_ROOT}/utilities/kick-mix"
@@ -19,9 +25,27 @@ AOO_SERVER_BIN="${AOO_SERVER_BIN:-${SCRIPT_DIR}/bin/aooserver}"
 WATCHDOG_SCRIPT="${SCRIPT_DIR}/watchdog.sh"
 
 mkdir -p "${LOG_DIR}"
+ks_event info hard-reset hard_reset_start "KickSuite hard reset started"
+
+write_hard_reset_marker() {
+  local result="$1"
+  local marker="${KS_LOG_DIR}/last-hard-reset.env"
+
+  {
+    printf 'run_id=%s\n' "${KS_RUN_ID}"
+    printf 'completed_at=%s\n' "$(ks_now)"
+    printf 'completed_epoch=%s\n' "$(date +%s)"
+    printf 'result=%s\n' "${result}"
+    printf 'git_sha=%s\n' "$(ks_git_sha)"
+    printf 'git_dirty=%s\n' "$(ks_git_dirty)"
+  } > "${marker}" 2>/dev/null || true
+}
 
 kill_pattern() {
   local pattern="$1"
+  if pgrep -f "${pattern}" >/dev/null 2>&1; then
+    ks_event info hard-reset kill_process "killing matching process" pattern="${pattern}"
+  fi
   pkill -f "${pattern}" >/dev/null 2>&1 || true
 }
 
@@ -38,6 +62,7 @@ wait_until_gone() {
     sleep "${delay}"
   done
 
+  ks_event warn hard-reset process_still_running "process pattern still visible after wait" pattern="${pattern}"
   return 1
 }
 
@@ -58,10 +83,12 @@ stop_suite_processes() {
 
 restart_user_audio_services() {
   if ! command -v systemctl >/dev/null 2>&1; then
+    ks_event error hard-reset missing_dependency "systemctl is required for audio service restart"
     echo "systemctl is required for audio service restart." >&2
     return 1
   fi
 
+  ks_event info hard-reset audio_services_restart "restarting user audio services"
   systemctl --user restart wireplumber pipewire pipewire-pulse
 }
 
@@ -77,6 +104,8 @@ wait_for_pipewire() {
     sleep "${delay}"
   done
 
+  ks_event error hard-reset pipewire_wait_timeout "timed out waiting for PipeWire after restart"
+  ks_snapshot pipewire_wait_timeout "PipeWire did not answer pw-link after restart"
   echo "Timed out waiting for PipeWire after restart." >&2
   return 1
 }
@@ -110,9 +139,18 @@ fi
 restart_user_audio_services
 wait_for_pipewire
 
+reset_result="clean"
 if stale_suite_ports_exist; then
+  reset_result="stale_ports"
+  ks_event warn hard-reset stale_ports "stale KickSuite ports remain after audio restart"
+  ks_snapshot stale_ports "stale ports visible after audio restart"
   echo "Warning: stale KickSuite ports are still visible after audio restart." >&2
   pw-link -o | grep -E '^(main|909|808|kick-mix|voice-spectral-governance|send-voice-spectral-governance|voice-saturation|send-voice-saturation|output|SonoBus):' >&2 || true
 else
+  ks_event info hard-reset hard_reset_complete "hard reset complete; no stale suite ports remain"
   echo "KickSuite hard reset complete; no stale suite ports remain."
 fi
+
+write_hard_reset_marker "${reset_result}"
+ks_log_health
+ks_update_summary

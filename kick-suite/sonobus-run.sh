@@ -4,6 +4,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 LOG_DIR="${SCRIPT_DIR}/.runlogs"
+LOGGING_LIB="${SCRIPT_DIR}/lib/logging.sh"
 SETUP_FILE="${SONOBUS_SETUP:-${SCRIPT_DIR}/sonobus/909-high-quality.xml}"
 ENV_FILE="${SONOBUS_ENV_FILE:-${SCRIPT_DIR}/sonobus.env}"
 
@@ -11,6 +12,13 @@ if [[ -f "${ENV_FILE}" ]]; then
   # shellcheck disable=SC1090
   source "${ENV_FILE}"
 fi
+
+# shellcheck disable=SC1090
+source "${LOGGING_LIB}"
+ks_use_current_or_new
+LOG_DIR="$(ks_log_subdir logs)"
+mkdir -p "${LOG_DIR}"
+ln -sfn "${LOG_DIR}/sonobus.log" "${SCRIPT_DIR}/.runlogs/sonobus.log" 2>/dev/null || true
 
 SONOBUS_BIN="${SONOBUS_BIN:-$(command -v sonobus || true)}"
 SONOBUS_GROUP="${SONOBUS_GROUP:-}"
@@ -40,28 +48,34 @@ PLAYBACK_FL="${PLAYBACK_FL:-alsa_output.platform-fe00b840.mailbox.stereo-fallbac
 PLAYBACK_FR="${PLAYBACK_FR:-alsa_output.platform-fe00b840.mailbox.stereo-fallback:playback_FR}"
 
 mkdir -p "${LOG_DIR}"
+ks_event info sonobus helper_start "SonoBus helper started" setup_file="${SETUP_FILE}" server="${SONOBUS_SERVER}" prefer_saved_setup="${SONOBUS_PREFER_SAVED_SETUP}" allow_setup_fallback="${SONOBUS_ALLOW_SETUP_FALLBACK}"
 
 if [[ -z "${SONOBUS_BIN}" ]]; then
+  ks_event error sonobus missing_binary "sonobus binary not found"
   echo "sonobus is required but not installed." >&2
   exit 1
 fi
 
 if [[ -z "${SONOBUS_GROUP}" ]]; then
+  ks_event error sonobus missing_group "SONOBUS_GROUP is required"
   echo "SONOBUS_GROUP is required." >&2
   exit 1
 fi
 
 if [[ ! -f "${SETUP_FILE}" ]]; then
+  ks_event error sonobus missing_setup_file "SonoBus setup file not found" setup_file="${SETUP_FILE}"
   echo "SonoBus setup file not found: ${SETUP_FILE}" >&2
   exit 1
 fi
 
 if ! command -v pw-jack >/dev/null 2>&1; then
+  ks_event error sonobus missing_dependency "pw-jack is required"
   echo "pw-jack is required but not installed." >&2
   exit 1
 fi
 
 if ! command -v pw-link >/dev/null 2>&1; then
+  ks_event error sonobus missing_dependency "pw-link is required"
   echo "pw-link is required but not installed." >&2
   exit 1
 fi
@@ -71,6 +85,7 @@ server_port="${SONOBUS_SERVER##*:}"
 sonobus_connect_host="${server_host}"
 
 if [[ -z "${server_host}" || -z "${server_port}" || "${server_host}" == "${SONOBUS_SERVER}" ]]; then
+  ks_event error sonobus invalid_server "SONOBUS_SERVER must use host:port syntax" server="${SONOBUS_SERVER}"
   echo "SONOBUS_SERVER must use host:port syntax: ${SONOBUS_SERVER}" >&2
   exit 1
 fi
@@ -154,6 +169,7 @@ ensure_local_aoo_server() {
   local i
 
   if ! host_matches_local_address "${server_host}"; then
+    ks_event info sonobus remote_aoo_server "using remote AOO server" host="${server_host}" port="${server_port}"
     return 0
   fi
 
@@ -163,11 +179,13 @@ ensure_local_aoo_server() {
   sonobus_connect_host="localhost"
 
   if [[ ! -x "${AOO_SERVER_BIN}" ]]; then
+    ks_event error sonobus missing_aoo_server "local AOO server binary is not executable" binary="${AOO_SERVER_BIN}"
     echo "Local AOO server requested via ${SONOBUS_SERVER}, but aooserver is not executable: ${AOO_SERVER_BIN}" >&2
     exit 1
   fi
 
   if [[ "${AOO_SERVER_RESTART}" == "1" ]]; then
+    ks_event info sonobus aoo_server_restart "restarting local AOO server" port="${server_port}"
     pkill -f "${AOO_SERVER_BIN} -p ${server_port}" >/dev/null 2>&1 || true
     for ((i = 0; i < 25; i += 1)); do
       if ! udp_port_is_listening "${server_port}"; then
@@ -178,10 +196,12 @@ ensure_local_aoo_server() {
   fi
 
   if udp_port_is_listening "${server_port}"; then
+    ks_event info sonobus aoo_server_ready "local AOO server UDP port is listening" port="${server_port}"
     return 0
   fi
 
   mkdir -p "${AOO_SERVER_LOG_DIR}"
+  ks_event info sonobus aoo_server_start "starting local AOO server" port="${server_port}" log_dir="${AOO_SERVER_LOG_DIR}"
   setsid -f "${AOO_SERVER_BIN}" -p "${server_port}" -l "${AOO_SERVER_LOG_DIR}" >/dev/null 2>&1 < /dev/null
 
   tries=$(awk -v timeout="${timeout}" -v delay="${delay}" 'BEGIN { print int((timeout / delay) + 0.5) }')
@@ -191,11 +211,14 @@ ensure_local_aoo_server() {
 
   for ((i = 0; i < tries; i += 1)); do
     if udp_port_is_listening "${server_port}"; then
+      ks_event info sonobus aoo_server_ready "local AOO server became ready" port="${server_port}"
       return 0
     fi
     sleep "${delay}"
   done
 
+  ks_event error sonobus aoo_server_timeout "timed out waiting for local AOO server" port="${server_port}"
+  ks_snapshot aoo_server_timeout "UDP port ${server_port}"
   echo "Timed out waiting for local aooserver on UDP port ${server_port}." >&2
   exit 1
 }
@@ -267,6 +290,7 @@ start_sonobus() {
   fi
 
   : > "${LOG_DIR}/sonobus.log"
+  ks_event info sonobus start_attempt "starting SonoBus" use_setup="${use_setup}" server="${sonobus_connect_host}:${server_port}" log_file="${LOG_DIR}/sonobus.log"
   setsid -f sh -c "env DISPLAY='${DISPLAY_VALUE}' XAUTHORITY='${XAUTHORITY_VALUE}' XDG_RUNTIME_DIR='${XDG_RUNTIME_DIR_VALUE}' PIPEWIRE_LATENCY='${PIPEWIRE_LATENCY_VALUE}' pw-jack '${SONOBUS_BIN}' --headless ${setup_arg} -g '${SONOBUS_GROUP}' -n '${SONOBUS_USERNAME}' ${SONOBUS_PASSWORD:+-p '${SONOBUS_PASSWORD}'} -c '${sonobus_connect_host}:${server_port}' >'${LOG_DIR}/sonobus.log' 2>&1 < /dev/null"
 }
 
@@ -287,6 +311,7 @@ wait_for_healthy_sonobus() {
 # SonoBus 1.7.x on this host misbehaves when PipeWire has no real default source.
 # Pointing the default source at the duplex output node restores stereo JACK inputs.
 set_default_audio_source "output"
+ks_event info sonobus default_source_set "requested PipeWire default audio source for SonoBus" source="output"
 ensure_local_aoo_server
 
 stop_sonobus
@@ -313,9 +338,11 @@ for setup_mode in "${setup_modes[@]}"; do
     if wait_for_healthy_sonobus; then
       sonobus_started=1
       sonobus_started_with_setup="${setup_mode}"
+      ks_event info sonobus health_check_passed "SonoBus passed startup health checks" setup_mode="${setup_mode}" attempt="${attempt}"
       break 2
     fi
 
+    ks_event warn sonobus health_check_failed "SonoBus startup health checks failed" setup_mode="${setup_mode}" attempt="${attempt}"
     if [[ "${setup_mode}" == "1" ]]; then
       echo "SonoBus startup attempt ${attempt}/${SONOBUS_START_RETRIES} with setup file failed health checks; retrying." >&2
     else
@@ -327,6 +354,8 @@ for setup_mode in "${setup_modes[@]}"; do
 done
 
 if [[ "${sonobus_started}" != "1" ]]; then
+  ks_event error sonobus startup_failed "SonoBus failed health checks after retries" retries="${SONOBUS_START_RETRIES}"
+  ks_snapshot sonobus_startup_failed "SonoBus failed health checks after ${SONOBUS_START_RETRIES} attempts"
   echo "SonoBus failed health checks after ${SONOBUS_START_RETRIES} attempts." >&2
   echo "Check ${LOG_DIR}/sonobus.log for sink or channel negotiation errors." >&2
   exit 1
@@ -369,6 +398,7 @@ connect_if_missing "output:out_0" "${sonobus_in_left}"
 connect_if_missing "output:out_1" "${sonobus_in_right}"
 connect_if_missing "SonoBus:out_1" "${PLAYBACK_FL}"
 connect_if_missing "SonoBus:out_2" "${PLAYBACK_FR}"
+ks_event info sonobus wired "SonoBus ports wired" in_left="${sonobus_in_left}" in_right="${sonobus_in_right}" playback_fl="${PLAYBACK_FL}" playback_fr="${PLAYBACK_FR}"
 
 cat <<EOF
 SonoBus started.
@@ -392,9 +422,14 @@ Log:
 EOF
 
 if [[ "${sonobus_started_with_setup}" != "1" ]]; then
+  ks_event warn sonobus setup_fallback "SonoBus started without loading saved setup" setup_file="${SETUP_FILE}"
   echo "SonoBus fell back to default headless startup without loading ${SETUP_FILE}." >&2
 fi
 
 if [[ "${stereo_input_ready}" != "1" ]]; then
+  ks_event warn sonobus mono_input_fallback "SonoBus exposed only one input; routing both channels to mono fallback" input="${sonobus_in_left}"
   echo "SonoBus exposed only in_1; using mono input fallback on ${sonobus_in_left}." >&2
 fi
+
+ks_log_health
+ks_update_summary
