@@ -30,19 +30,19 @@ fizzHz = safeFreq(smoothCtl(fizzFreqCtl));
 fizzQ = safeQ(smoothCtl(fizzQCtl));
 levelS = smoothCtl(outLevelCtl);
 
-splitLowShelf(x, gainDb, freq) = low * db2linear(gainDb) + high
+splitLowShelf(gainDb, freq, x) = low * db2linear(gainDb) + high
 with {
   low = x : fi.lowpass(1, safeFreq(freq));
   high = x - low;
 };
 
-splitHighShelf(x, gainDb, freq) = low + high * db2linear(gainDb)
+splitHighShelf(gainDb, freq, x) = low + high * db2linear(gainDb)
 with {
   low = x : fi.lowpass(1, safeFreq(freq));
   high = x - low;
 };
 
-tiltEq(x, amt, pivotHz) = low * lowGain + high * highGain
+tiltEq(amt, pivotHz, x) = low * lowGain + high * highGain
 with {
   low = x : fi.lowpass(1, safeFreq(pivotHz));
   high = x - low;
