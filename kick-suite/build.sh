@@ -10,6 +10,8 @@ VOICE_SPECTRAL_GOVERNANCE_DSP="${REPO_ROOT}/spectral-governance/voice-spectral-g
 SEND_VOICE_SPECTRAL_GOVERNANCE_DSP="${REPO_ROOT}/spectral-governance/send-voice-spectral-governance.dsp"
 VOICE_SATURATION_DSP="${REPO_ROOT}/saturation/voice-saturation.dsp"
 SEND_VOICE_SATURATION_DSP="${REPO_ROOT}/saturation/send-voice-saturation.dsp"
+SATURATION_SPECTRAL_GOVERNANCE_DSP="${REPO_ROOT}/saturation-spectral-governance/saturation-spectral-governance.dsp"
+SEND_SATURATION_SPECTRAL_GOVERNANCE_DSP="${REPO_ROOT}/saturation-spectral-governance/send-saturation-spectral-governance.dsp"
 OUTPUT_DSP="${REPO_ROOT}/utilities/output.dsp"
 KICK_909_DSP="${REPO_ROOT}/kicks/909.dsp"
 KICK_808_DSP="${REPO_ROOT}/kicks/808.dsp"
@@ -104,6 +106,8 @@ build_module "${REPO_ROOT}/spectral-governance/voice-spectral-governance" "${VOI
 build_module "${REPO_ROOT}/spectral-governance/send-voice-spectral-governance" "${SEND_VOICE_SPECTRAL_GOVERNANCE_DSP}" "${REPO_ROOT}/spectral-governance"
 build_module "${REPO_ROOT}/saturation/voice-saturation" "${VOICE_SATURATION_DSP}" "${REPO_ROOT}/saturation"
 build_module "${REPO_ROOT}/saturation/send-voice-saturation" "${SEND_VOICE_SATURATION_DSP}" "${REPO_ROOT}/saturation"
+build_module "${REPO_ROOT}/saturation-spectral-governance/saturation-spectral-governance" "${SATURATION_SPECTRAL_GOVERNANCE_DSP}" "${REPO_ROOT}/saturation-spectral-governance"
+build_module "${REPO_ROOT}/saturation-spectral-governance/send-saturation-spectral-governance" "${SEND_SATURATION_SPECTRAL_GOVERNANCE_DSP}" "${REPO_ROOT}/saturation-spectral-governance"
 build_module "${REPO_ROOT}/utilities/output" "${OUTPUT_DSP}" "${REPO_ROOT}/utilities"
 build_module "${REPO_ROOT}/kicks/909" "${KICK_909_DSP}" "${REPO_ROOT}/kicks"
 build_module "${REPO_ROOT}/kicks/808" "${KICK_808_DSP}" "${REPO_ROOT}/kicks"
@@ -118,6 +122,8 @@ Generated:
   ${REPO_ROOT}/spectral-governance/send-voice-spectral-governance
   ${REPO_ROOT}/saturation/voice-saturation
   ${REPO_ROOT}/saturation/send-voice-saturation
+  ${REPO_ROOT}/saturation-spectral-governance/saturation-spectral-governance
+  ${REPO_ROOT}/saturation-spectral-governance/send-saturation-spectral-governance
   ${REPO_ROOT}/utilities/output
   ${REPO_ROOT}/kicks/909
   ${REPO_ROOT}/kicks/808

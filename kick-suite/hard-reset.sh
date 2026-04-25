@@ -17,6 +17,8 @@ VOICE_SPECTRAL_GOVERNANCE_BIN="${REPO_ROOT}/spectral-governance/voice-spectral-g
 SEND_VOICE_SPECTRAL_GOVERNANCE_BIN="${REPO_ROOT}/spectral-governance/send-voice-spectral-governance"
 VOICE_SATURATION_BIN="${REPO_ROOT}/saturation/voice-saturation"
 SEND_VOICE_SATURATION_BIN="${REPO_ROOT}/saturation/send-voice-saturation"
+SATURATION_SPECTRAL_GOVERNANCE_BIN="${REPO_ROOT}/saturation-spectral-governance/saturation-spectral-governance"
+SEND_SATURATION_SPECTRAL_GOVERNANCE_BIN="${REPO_ROOT}/saturation-spectral-governance/send-saturation-spectral-governance"
 OUTPUT_BIN="${REPO_ROOT}/utilities/output"
 KICK_909_BIN="${REPO_ROOT}/kicks/909"
 KICK_808_BIN="${REPO_ROOT}/kicks/808"
@@ -76,6 +78,8 @@ stop_suite_processes() {
   kill_pattern "${SEND_VOICE_SPECTRAL_GOVERNANCE_BIN}"
   kill_pattern "${VOICE_SATURATION_BIN}"
   kill_pattern "${SEND_VOICE_SATURATION_BIN}"
+  kill_pattern "${SATURATION_SPECTRAL_GOVERNANCE_BIN}"
+  kill_pattern "${SEND_SATURATION_SPECTRAL_GOVERNANCE_BIN}"
   kill_pattern "${OUTPUT_BIN}"
   kill_pattern "${KICK_909_BIN}"
   kill_pattern "${KICK_808_BIN}"
@@ -111,7 +115,7 @@ wait_for_pipewire() {
 }
 
 stale_suite_ports_exist() {
-  pw-link -o 2>/dev/null | grep -Eq '^(main|909|808|kick-mix|voice-spectral-governance|send-voice-spectral-governance|voice-saturation|send-voice-saturation|output|SonoBus):'
+  pw-link -o 2>/dev/null | grep -Eq '^(main|909|808|kick-mix|voice-spectral-governance|send-voice-spectral-governance|voice-saturation|send-voice-saturation|saturation-spectral-governance|send-saturation-spectral-governance|output|SonoBus):'
 }
 
 stop_suite_processes
@@ -124,6 +128,8 @@ for pattern in \
   "${SEND_VOICE_SPECTRAL_GOVERNANCE_BIN}" \
   "${VOICE_SATURATION_BIN}" \
   "${SEND_VOICE_SATURATION_BIN}" \
+  "${SATURATION_SPECTRAL_GOVERNANCE_BIN}" \
+  "${SEND_SATURATION_SPECTRAL_GOVERNANCE_BIN}" \
   "${OUTPUT_BIN}" \
   "${KICK_909_BIN}" \
   "${KICK_808_BIN}" \
@@ -145,7 +151,7 @@ if stale_suite_ports_exist; then
   ks_event warn hard-reset stale_ports "stale KickSuite ports remain after audio restart"
   ks_snapshot stale_ports "stale ports visible after audio restart"
   echo "Warning: stale KickSuite ports are still visible after audio restart." >&2
-  pw-link -o | grep -E '^(main|909|808|kick-mix|voice-spectral-governance|send-voice-spectral-governance|voice-saturation|send-voice-saturation|output|SonoBus):' >&2 || true
+  pw-link -o | grep -E '^(main|909|808|kick-mix|voice-spectral-governance|send-voice-spectral-governance|voice-saturation|send-voice-saturation|saturation-spectral-governance|send-saturation-spectral-governance|output|SonoBus):' >&2 || true
 else
   ks_event info hard-reset hard_reset_complete "hard reset complete; no stale suite ports remain"
   echo "KickSuite hard reset complete; no stale suite ports remain."

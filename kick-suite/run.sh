@@ -18,6 +18,8 @@ VOICE_SPECTRAL_GOVERNANCE_BIN="${REPO_ROOT}/spectral-governance/voice-spectral-g
 SEND_VOICE_SPECTRAL_GOVERNANCE_BIN="${REPO_ROOT}/spectral-governance/send-voice-spectral-governance"
 VOICE_SATURATION_BIN="${REPO_ROOT}/saturation/voice-saturation"
 SEND_VOICE_SATURATION_BIN="${REPO_ROOT}/saturation/send-voice-saturation"
+SATURATION_SPECTRAL_GOVERNANCE_BIN="${REPO_ROOT}/saturation-spectral-governance/saturation-spectral-governance"
+SEND_SATURATION_SPECTRAL_GOVERNANCE_BIN="${REPO_ROOT}/saturation-spectral-governance/send-saturation-spectral-governance"
 OUTPUT_BIN="${REPO_ROOT}/utilities/output"
 KICK_909_BIN="${REPO_ROOT}/kicks/909"
 KICK_808_BIN="${REPO_ROOT}/kicks/808"
@@ -27,6 +29,8 @@ VOICE_SPECTRAL_GOVERNANCE_DSP="${REPO_ROOT}/spectral-governance/voice-spectral-g
 SEND_VOICE_SPECTRAL_GOVERNANCE_DSP="${REPO_ROOT}/spectral-governance/send-voice-spectral-governance.dsp"
 VOICE_SATURATION_DSP="${REPO_ROOT}/saturation/voice-saturation.dsp"
 SEND_VOICE_SATURATION_DSP="${REPO_ROOT}/saturation/send-voice-saturation.dsp"
+SATURATION_SPECTRAL_GOVERNANCE_DSP="${REPO_ROOT}/saturation-spectral-governance/saturation-spectral-governance.dsp"
+SEND_SATURATION_SPECTRAL_GOVERNANCE_DSP="${REPO_ROOT}/saturation-spectral-governance/send-saturation-spectral-governance.dsp"
 OUTPUT_DSP="${REPO_ROOT}/utilities/output.dsp"
 KICK_909_DSP="${REPO_ROOT}/kicks/909.dsp"
 KICK_808_DSP="${REPO_ROOT}/kicks/808.dsp"
@@ -177,6 +181,8 @@ stop_existing_suite() {
   pkill -f "${SEND_VOICE_SPECTRAL_GOVERNANCE_BIN}" || true
   pkill -f "${VOICE_SATURATION_BIN}" || true
   pkill -f "${SEND_VOICE_SATURATION_BIN}" || true
+  pkill -f "${SATURATION_SPECTRAL_GOVERNANCE_BIN}" || true
+  pkill -f "${SEND_SATURATION_SPECTRAL_GOVERNANCE_BIN}" || true
   pkill -f "${OUTPUT_BIN}" || true
   pkill -f "${KICK_909_BIN}" || true
   pkill -f "${KICK_808_BIN}" || true
@@ -246,7 +252,7 @@ launch_carla_patchbay() {
   fi
 }
 
-if need_binary "${MAIN_BIN}" "${MAIN_DSP}" || need_binary "${KICK_MIX_BIN}" "${KICK_MIX_DSP}" || need_binary "${VOICE_SPECTRAL_GOVERNANCE_BIN}" "${VOICE_SPECTRAL_GOVERNANCE_DSP}" || need_binary "${SEND_VOICE_SPECTRAL_GOVERNANCE_BIN}" "${SEND_VOICE_SPECTRAL_GOVERNANCE_DSP}" || need_binary "${VOICE_SATURATION_BIN}" "${VOICE_SATURATION_DSP}" || need_binary "${SEND_VOICE_SATURATION_BIN}" "${SEND_VOICE_SATURATION_DSP}" || need_binary "${OUTPUT_BIN}" "${OUTPUT_DSP}" || need_binary "${KICK_909_BIN}" "${KICK_909_DSP}" || need_binary "${KICK_808_BIN}" "${KICK_808_DSP}"; then
+if need_binary "${MAIN_BIN}" "${MAIN_DSP}" || need_binary "${KICK_MIX_BIN}" "${KICK_MIX_DSP}" || need_binary "${VOICE_SPECTRAL_GOVERNANCE_BIN}" "${VOICE_SPECTRAL_GOVERNANCE_DSP}" || need_binary "${SEND_VOICE_SPECTRAL_GOVERNANCE_BIN}" "${SEND_VOICE_SPECTRAL_GOVERNANCE_DSP}" || need_binary "${VOICE_SATURATION_BIN}" "${VOICE_SATURATION_DSP}" || need_binary "${SEND_VOICE_SATURATION_BIN}" "${SEND_VOICE_SATURATION_DSP}" || need_binary "${SATURATION_SPECTRAL_GOVERNANCE_BIN}" "${SATURATION_SPECTRAL_GOVERNANCE_DSP}" || need_binary "${SEND_SATURATION_SPECTRAL_GOVERNANCE_BIN}" "${SEND_SATURATION_SPECTRAL_GOVERNANCE_DSP}" || need_binary "${OUTPUT_BIN}" "${OUTPUT_DSP}" || need_binary "${KICK_909_BIN}" "${KICK_909_DSP}" || need_binary "${KICK_808_BIN}" "${KICK_808_DSP}"; then
   ks_event info run build_required "one or more binaries are missing or older than DSP sources"
   "${BUILD_SCRIPT}"
   ks_event info run build_complete "build script completed"
@@ -277,6 +283,8 @@ launch_client "${VOICE_SPECTRAL_GOVERNANCE_BIN}" "$(ks_component_log_path voice-
 launch_client "${SEND_VOICE_SPECTRAL_GOVERNANCE_BIN}" "$(ks_component_log_path send-voice-spectral-governance.log)"
 launch_client "${VOICE_SATURATION_BIN}" "$(ks_component_log_path voice-saturation.log)" -httpd
 launch_client "${SEND_VOICE_SATURATION_BIN}" "$(ks_component_log_path send-voice-saturation.log)"
+launch_client "${SATURATION_SPECTRAL_GOVERNANCE_BIN}" "$(ks_component_log_path saturation-spectral-governance.log)" -httpd
+launch_client "${SEND_SATURATION_SPECTRAL_GOVERNANCE_BIN}" "$(ks_component_log_path send-saturation-spectral-governance.log)"
 launch_client "${OUTPUT_BIN}" "$(ks_component_log_path output.log)"
 launch_client "${KICK_909_BIN}" "$(ks_component_log_path 909.log)"
 launch_client "${KICK_808_BIN}" "$(ks_component_log_path 808.log)"
@@ -292,6 +300,8 @@ disconnect_module_sinks "voice-spectral-governance:out_0"
 disconnect_module_sinks "send-voice-spectral-governance:out_0"
 disconnect_module_sinks "voice-saturation:out_0"
 disconnect_module_sinks "send-voice-saturation:out_0"
+disconnect_module_sinks "saturation-spectral-governance:out_0"
+disconnect_module_sinks "send-saturation-spectral-governance:out_0"
 
 if [[ "${SHOW_WINDOWS}" == "1" && -x "${SHOW_WINDOWS_SCRIPT}" ]]; then
   setsid -f env "${launch_env[@]}" sh -c "\"${SHOW_WINDOWS_SCRIPT}\" >/dev/null 2>&1 < /dev/null"
@@ -307,7 +317,10 @@ link_required "voice-spectral-governance:out_0" "send-voice-spectral-governance:
 link_required "send-voice-spectral-governance:out_0" "voice-saturation:in_0"
 link_required "send-voice-spectral-governance:out_0" "send-voice-saturation:in_0"
 link_required "voice-saturation:out_0" "send-voice-saturation:in_1"
-link_required "send-voice-saturation:out_0" "output:in_0"
+link_required "send-voice-saturation:out_0" "saturation-spectral-governance:in_0"
+link_required "send-voice-saturation:out_0" "send-saturation-spectral-governance:in_0"
+link_required "saturation-spectral-governance:out_0" "send-saturation-spectral-governance:in_1"
+link_required "send-saturation-spectral-governance:out_0" "output:in_0"
 ks_event info run graph_linked "core suite graph linked" graph_hash="$(ks_graph_hash)"
 
 if [[ "${USE_SONOBUS}" == "1" ]]; then
@@ -367,7 +380,10 @@ Ports wired:
   send-voice-spectral-governance:out_0 -> voice-saturation:in_0
   send-voice-spectral-governance:out_0 -> send-voice-saturation:in_0
   voice-saturation:out_0 -> send-voice-saturation:in_1
-  send-voice-saturation:out_0 -> output:in_0
+  send-voice-saturation:out_0 -> saturation-spectral-governance:in_0
+  send-voice-saturation:out_0 -> send-saturation-spectral-governance:in_0
+  saturation-spectral-governance:out_0 -> send-saturation-spectral-governance:in_1
+  send-saturation-spectral-governance:out_0 -> output:in_0
 $(if [[ "${USE_SONOBUS}" == "1" ]]; then
     cat <<'EOT'
   output outputs -> SonoBus inputs
@@ -388,6 +404,8 @@ Logs:
   ${LOG_DIR}/send-voice-spectral-governance.log
   ${LOG_DIR}/voice-saturation.log
   ${LOG_DIR}/send-voice-saturation.log
+  ${LOG_DIR}/saturation-spectral-governance.log
+  ${LOG_DIR}/send-saturation-spectral-governance.log
   ${LOG_DIR}/output.log
   ${LOG_DIR}/909.log
   ${LOG_DIR}/808.log

@@ -16,6 +16,8 @@ WINDOW_ORDER = [
     "send-voice-spectral-governance",
     "voice-saturation",
     "send-voice-saturation",
+    "saturation-spectral-governance",
+    "send-saturation-spectral-governance",
     "output",
 ]
 MARGIN_X = 40

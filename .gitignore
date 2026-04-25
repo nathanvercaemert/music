@@ -27,6 +27,10 @@ saturation/voice-saturation
 saturation/voice-saturation.dsp.cpp
 saturation/send-voice-saturation
 saturation/send-voice-saturation.cpp
+saturation-spectral-governance/saturation-spectral-governance
+saturation-spectral-governance/saturation-spectral-governance.dsp.cpp
+saturation-spectral-governance/send-saturation-spectral-governance
+saturation-spectral-governance/send-saturation-spectral-governance.cpp
 utilities/main
 utilities/main.cpp
 utilities/kick-mix

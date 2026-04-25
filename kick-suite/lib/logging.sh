@@ -195,6 +195,11 @@ ks_missing_ports() {
     "send-voice-saturation:in_0"
     "send-voice-saturation:in_1"
     "send-voice-saturation:out_0"
+    "saturation-spectral-governance:in_0"
+    "saturation-spectral-governance:out_0"
+    "send-saturation-spectral-governance:in_0"
+    "send-saturation-spectral-governance:in_1"
+    "send-saturation-spectral-governance:out_0"
     "output:in_0"
     "output:out_0"
     "output:out_1"
@@ -296,7 +301,7 @@ ks_log_health() {
 
 ks_filtered_pw_link() {
   pw-link -l 2>/dev/null \
-    | grep -E '^(alsa_output|main|909|808|kick-mix|voice-spectral-governance|send-voice-spectral-governance|voice-saturation|send-voice-saturation|output|SonoBus|RustDesk):|[|][-<>].*(alsa_output|main|909|808|kick-mix|voice-spectral-governance|send-voice-spectral-governance|voice-saturation|send-voice-saturation|output|SonoBus|RustDesk):' \
+    | grep -E '^(alsa_output|main|909|808|kick-mix|voice-spectral-governance|send-voice-spectral-governance|voice-saturation|send-voice-saturation|saturation-spectral-governance|send-saturation-spectral-governance|output|SonoBus|RustDesk):|[|][-<>].*(alsa_output|main|909|808|kick-mix|voice-spectral-governance|send-voice-spectral-governance|voice-saturation|send-voice-saturation|saturation-spectral-governance|send-saturation-spectral-governance|output|SonoBus|RustDesk):' \
     || true
 }
 
@@ -306,7 +311,8 @@ ks_process_stats() {
       NR == 1 { print; next }
       $7 ~ /^(pipewire|wireplumber|pipewire-pulse|sonobus|aooserver|main|kick-mix|909|808|output)$/ { print; next }
       $7 ~ /^(voice-spectral-|send-voice-spec|voice-saturatio|send-voice-satu)$/ { print; next }
-      $0 ~ /\/home\/music\/music\/(utilities|kicks|spectral-governance|saturation)\// { print; next }
+      $7 ~ /^(saturation-spec|send-saturatio)$/ { print; next }
+      $0 ~ /\/home\/music\/music\/(utilities|kicks|spectral-governance|saturation|saturation-spectral-governance)\// { print; next }
     ' \
     | ks_redact \
     || true
